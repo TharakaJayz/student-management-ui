@@ -20,11 +20,11 @@ const LeftSidebar = ({
 }: LeftSidebarProps) => {
   return (
     <aside
-      className={`flex min-h-[calc(100vh-4rem)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ${
+      className={`fixed top-16 left-0 z-30 hidden h-[calc(100vh-4rem)] flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex ${
         isSidebarOpen ? "w-72" : "w-16"
       }`}
     >
-      <nav className="flex-1 overflow-y-auto px-3 py-5">
+      <nav className="flex-1 overflow-y-auto overscroll-contain px-3 py-5">
         <div className="space-y-1">
           {navItems.map((item) => (
             <Link

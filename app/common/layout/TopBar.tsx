@@ -6,16 +6,18 @@ type TopBarProps = {
 
 const TopBar = ({ onToggleSidebar }: TopBarProps) => {
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-topbar text-topbar-foreground">
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-border text-topbar-foreground bg-background">
       <div className="flex h-16 items-center">
-        <div className="flex h-full w-72 shrink-0 items-center justify-between pl-4">
+        <div className="flex h-full w-72 shrink-0 items-center justify-between  px-4">
           <div className="flex items-center gap-3">
             <div className="size-9 shrink-0 rounded-full bg-primary/10 text-center leading-9">
               🍛
             </div>
             <div>
               <p className="text-sm font-semibold tracking-wide">CURRY KING</p>
-              <p className="text-xs text-muted-foreground">Product App</p>
+              <p className="text-xs text-muted-foreground max-[700px]:hidden">
+                Product App
+              </p>
             </div>
           </div>
           <button
@@ -28,7 +30,7 @@ const TopBar = ({ onToggleSidebar }: TopBarProps) => {
           </button>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center justify-center px-4">
+        <div className="flex min-w-0 flex-1 items-center justify-center px-4 max-[700px]:hidden">
           <div className="relative w-full max-w-xl">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -39,7 +41,7 @@ const TopBar = ({ onToggleSidebar }: TopBarProps) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-4 md:px-8">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 px-3 md:px-8">
           <button
             type="button"
             className="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
