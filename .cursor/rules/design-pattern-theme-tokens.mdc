@@ -1,0 +1,37 @@
+---
+description: Dashboard UI design pattern and token usage
+globs: app/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Dashboard Design Pattern
+
+Follow this visual system for new pages, sections, and components.
+
+## Theme Tokens First
+
+- Always consume semantic tokens from `app/globals.css` (`--primary`, `--background`, `--card`, `--border`, `--muted`, sidebar and topbar tokens).
+- Avoid hardcoded hex colors in components unless introducing a new shared token.
+- Primary brand color is `#6E1A37`; primary text on brand is `#ECFAE5`.
+
+## Layout Pattern
+
+- Use a fixed left sidebar and top navigation shell for dashboard routes.
+- Main content should sit on `--background`, and cards/sections on `--card` or `--surface`.
+- Keep route pages thin and compose UI with container/view pattern under `app/common/pages/<route>/`.
+
+## Shape and Radius
+
+- Default radius scale is driven by global `--radius` and derived token sizes.
+- Use medium corners for inputs/cards and larger corners for modals and major panels.
+- Keep radius consistent across buttons, inputs, selects, cards, and modal surfaces.
+
+## Typography
+
+- Use Inter as the default sans font for all dashboard text.
+- Keep heading/body contrast clear with token-based foreground colors.
+
+## Dark Mode
+
+- Every new UI section must remain readable in `.dark` mode.
+- When adding new visual statuses (info/success/warning/error), define both light and dark token values in `app/globals.css`.
