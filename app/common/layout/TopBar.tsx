@@ -8,21 +8,21 @@ const TopBar = ({ onToggleSidebar }: TopBarProps) => {
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-border text-topbar-foreground bg-background">
       <div className="flex h-16 items-center">
-        <div className="flex h-full w-72 shrink-0 items-center justify-between  px-4">
+        <div className="flex h-full w-72 shrink-0 items-center justify-between max-[700px]:justify-start px-4">
           <div className="flex items-center gap-3">
             <div className="size-9 shrink-0 rounded-full bg-primary/10 text-center leading-9">
               🍛
             </div>
             <div>
-              <p className="text-sm font-semibold tracking-wide">CURRY KING</p>
+              <p className="text-sm font-semibold tracking-wide">Educa</p>
               <p className="text-xs text-muted-foreground max-[700px]:hidden">
-                Product App
+                Institute App
               </p>
             </div>
           </div>
           <button
             type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-card-foreground hover:cursor-pointer"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-card-foreground hover:cursor-pointer max-[700px]:ml-5"
             aria-label="Toggle navigation"
             onClick={onToggleSidebar}
           >
