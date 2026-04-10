@@ -15,11 +15,11 @@ import {
 } from "lucide-react"
 
 const primaryNav = [
-  { title: "Dashboard", icon: Home },
-  { title: "Students", icon: GraduationCap },
-  { title: "Classes", icon: BookOpen },
-  { title: "Teachers", icon: Users },
-  { title: "Institute Settings", icon: Settings },
+  { title: "Dashboard", icon: Home, href: "/dashboard" },
+  { title: "Students", icon: GraduationCap, href: "/students" },
+  { title: "Classes", icon: BookOpen, href: "/classes" },
+  { title: "Teachers", icon: Users, href: "/teachers" },
+  { title: "Institute Settings", icon: Settings, href: "/institute-settings" },
 ]
 
 export default function DashboardLayout({
@@ -89,7 +89,7 @@ export default function DashboardLayout({
               {primaryNav.map((item) => (
                 <Link
                   key={item.title}
-                  href="#"
+                href={item.href}
                   className={`flex rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
                     isSidebarOpen ? "items-center gap-3" : "items-center justify-center"
                   }`}
