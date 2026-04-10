@@ -61,12 +61,13 @@ export default function DashboardLayout({
           isSidebarOpen={isSidebarOpen}
           navItems={primaryNav}
           onToggleSidebar={() => {
+            console.log("menu clicked",isSidebarOpen)
             if (window.innerWidth < 768) {
               setIsMobileSidebarOpen(false)
               return
             }
-            if (isSidebarOpen) {
-              setIsSidebarOpen(false)
+            if (!isSidebarOpen) {
+              setIsSidebarOpen((prev) => !prev)
             }
           }}
         />
