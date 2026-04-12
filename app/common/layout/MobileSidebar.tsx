@@ -1,5 +1,16 @@
+"use client"
+
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+function isNavActive(pathname: string, href: string) {
+  if (pathname === href) return true
+  if (href !== "/" && pathname.startsWith(`${href}/`)) return true
+  return false
+}
 
 type NavItem = {
   title: string
@@ -14,6 +25,8 @@ type MobileSidebarProps = {
 }
 
 const MobileSidebar = ({ isOpen, navItems, onClose }: MobileSidebarProps) => {
+  const pathname = usePathname()
+
   return (
     <>
       <div
@@ -30,17 +43,29 @@ const MobileSidebar = ({ isOpen, navItems, onClose }: MobileSidebarProps) => {
       >
         <nav className="h-full overflow-y-auto px-3 py-5">
           <div className="space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.title}
-                href={item.href}
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              >
-                <item.icon className="size-4 shrink-0 text-muted-foreground" />
-                {item.title}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const active = isNavActive(pathname, item.href)
+              return (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    active && "bg-sidebar-accent text-sidebar-accent-foreground"
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "size-4 shrink-0",
+                      active ? "text-sidebar-accent-foreground" : "text-muted-foreground"
+                    )}
+                  />
+                  {item.title}
+                </Link>
+              )
+            })}
           </div>
         </nav>
       </aside>
