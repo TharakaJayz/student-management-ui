@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import { TrendingUp } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts"
 
@@ -18,38 +19,83 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
-const chartData = [
-  { grade: "grade-5", income: 12500 },
-  { grade: "grade-6", income: 14200 },
-  { grade: "grade-7", income: 11800 },
-  { grade: "grade-8", income: 15600 },
-  { grade: "grade-9", income: 13100 },
-  { grade: "grade-10", income: 14900 },
-  { grade: "grade-11", income: 13800 },
+export type GradeIncomeRow = {
+  grade: string
+  income: number
+}
+
+export type ChartBarLabelCustomProps = {
+  data: GradeIncomeRow[]
+  config: ChartConfig
+}
+
+const MONTH_OPTIONS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ]
 
-const chartConfig = {
-  income: {
-    label: "Income",
-    color: "var(--chart-2)",
-  },
-  label: {
-    color: "var(--background)",
-  },
-} satisfies ChartConfig
+export function ChartBarLabelCustom({ data, config }: ChartBarLabelCustomProps) {
+  const now = useMemo(() => new Date(), [])
+  const [selectedMonth, setSelectedMonth] = useState(
+    MONTH_OPTIONS[now.getMonth()]
+  )
+  const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()))
+  const yearOptions = useMemo(() => {
+    const currentYear = now.getFullYear()
+    return [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
+  }, [now])
 
-export function ChartBarLabelCustom() {
   return (
     <Card className="border border-border bg-card">
-      <CardHeader>
-        <CardTitle>Monthly Income Summary by Grade</CardTitle>
-        <CardDescription>Grades 5–11</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div>
+          <CardTitle>Monthly Income Summary by Grade</CardTitle>
+          <CardDescription>
+            {selectedMonth} {selectedYear} · Grades 5-11
+          </CardDescription>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            aria-label="Select month"
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+            className="h-8 rounded-md border border-border bg-card px-2 text-sm"
+          >
+            {MONTH_OPTIONS.map((month) => (
+              <option key={month} value={month}>
+                {month}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Select year"
+            value={selectedYear}
+            onChange={(event) => setSelectedYear(event.target.value)}
+            className="h-8 rounded-md border border-border bg-card px-2 text-sm"
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-72">
+        <ChartContainer config={config} className="h-72">
           <BarChart
             accessibilityLayer
-            data={chartData}
+            data={data}
             layout="vertical"
             margin={{
               right: 16,
@@ -105,7 +151,7 @@ export function ChartBarLabelCustom() {
           </BarChart>
         </ChartContainer>
       </CardContent>
-      <CardFooter className="flex-col items-start gap-2 text-sm hidden">
+      <CardFooter className="hidden flex-col items-start gap-2 text-sm">
         <div className="flex items-center gap-2 leading-none font-medium">
           Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
         </div>
