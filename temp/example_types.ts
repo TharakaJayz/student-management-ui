@@ -8,42 +8,42 @@ interface BaseDomain {
   updatedAt: Date;
 }
 
-interface Institute extends BaseDomain {
-  name: string;
-  address: string;
-  ownerId: string;
-}
+// interface Institute extends BaseDomain {
+//   name: string;
+//   address: string;
+//   ownerId: string;
+// }
 
-interface Student extends BaseDomain {
-  name: string;
-  age: number;
-  imageUrl: string;         
-  grade: string;
-}
+// interface Student extends BaseDomain {
+//   name: string;
+//   age: number;
+//   imageUrl: string;         
+//   grade: string;
+// }
 
-interface Owner extends BaseDomain {
-  name: string;
-  mobile: string;
-}
+// interface Owner extends BaseDomain {
+//   name: string;
+//   mobile: string;
+// }
 
-interface Teacher extends BaseDomain {
-  name: string;
-  mobile: string;
-  subjectId:string;
-}
+// interface Teacher extends BaseDomain {
+//   name: string;
+//   mobile: string;
+//   subjectId:string;
+// }
 
-interface ClassRoom extends BaseDomain {
-  name: string;
-  instituteId: string;
-  location: string;
-  capacity: number;
-  isAirConditioned: boolean;
-}
+// interface ClassRoom extends BaseDomain {
+//   name: string;
+//   instituteId: string;
+//   location: string;
+//   capacity: number;
+//   isAirConditioned: boolean;
+// }
 
-interface Subject extends BaseDomain {
-  name: string;
-  medium:"ENGLISH" | "SINHALA"
-}
+// interface Subject extends BaseDomain {
+//   name: string;
+//   medium:"ENGLISH" | "SINHALA"
+// }
 
 interface Teacher_Subject {
   teacherId: string;
@@ -53,19 +53,19 @@ interface Teacher_Subject {
   updatedAt: Date;
 }
 
-interface Class extends BaseDomain {
-  name: string;
-  classRoomId: string;
-  instituteId: string;
-  teacherId: string;
-  subjectId: string;
-  grade: string;
-  startTime: number;
-  endTime: number;
-  frequency: "WEEKLY" | "OTHER";
-  day: Days;
-  classFee: number;
-}
+// interface Class extends BaseDomain {
+//   name: string;
+//   classRoomId: string;
+//   instituteId: string;
+//   teacherId: string;
+//   subjectId: string;
+//   grade: string;
+//   startTime: number;
+//   endTime: number;
+//   frequency: "WEEKLY" | "OTHER";
+//   day: Days;
+//   classFee: number;
+// }
 
 interface Student_Class {
   studentId: string; //fk
