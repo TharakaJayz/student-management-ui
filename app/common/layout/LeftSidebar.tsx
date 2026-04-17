@@ -1,5 +1,16 @@
+"use client"
+
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+function isNavActive(pathname: string, href: string) {
+  if (pathname === href) return true
+  if (href !== "/" && pathname.startsWith(`${href}/`)) return true
+  return false
+}
 
 type NavItem = {
   title: string
@@ -18,6 +29,8 @@ const LeftSidebar = ({
   navItems,
   onToggleSidebar,
 }: LeftSidebarProps) => {
+  const pathname = usePathname()
+
   return (
     <aside
       className={`fixed top-16 left-0 z-30 hidden h-[calc(100vh-4rem)] flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex ${
@@ -26,19 +39,30 @@ const LeftSidebar = ({
     >
       <nav className="flex-1 overflow-y-auto overscroll-contain px-3 py-5">
         <div className="space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.title}
-              href={item.href}
-              onClick={onToggleSidebar}
-              className={`flex rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                isSidebarOpen ? "items-center gap-3" : "items-center justify-center"
-              }`}
-            >
-              <item.icon className="size-4 shrink-0 text-muted-foreground" />
-              {isSidebarOpen ? item.title : null}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const active = isNavActive(pathname, item.href)
+            return (
+              <Link
+                key={item.title}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                onClick={onToggleSidebar}
+                className={cn(
+                  "flex rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isSidebarOpen ? "items-center gap-3" : "items-center justify-center",
+                  active && "bg-sidebar-accent text-sidebar-accent-foreground"
+                )}
+              >
+                <item.icon
+                  className={cn(
+                    "size-4 shrink-0",
+                    active ? "text-sidebar-accent-foreground" : "text-muted-foreground"
+                  )}
+                />
+                {isSidebarOpen ? item.title : null}
+              </Link>
+            )
+          })}
         </div>
       </nav>
     </aside>
