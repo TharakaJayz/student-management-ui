@@ -55,6 +55,7 @@ const teacherFormSchema = z.object({
     .string()
     .min(10, "Mobile should be at least 10 digits")
     .regex(/^\+?[0-9]+$/, "Use numbers only (optionally starting with +)"),
+  subjectId: z.string().min(1, "Subject is required"),
   isActive: z.enum(["true", "false"]),
 })
 
@@ -65,21 +66,33 @@ export type TeacherMutationPayload =
   | { mode: "create"; data: TeacherFormValues }
   | { mode: "update"; id: string; data: TeacherFormValues }
 
+export interface SubjectOption {
+  id: string
+  name: string
+}
+
 export interface TeachersViewProps {
   teachers: Teacher[]
+  subjects: SubjectOption[]
   onSubmitTeacher: (payload: TeacherMutationPayload) => void
 }
 
-const TeachersView = ({ teachers, onSubmitTeacher }: TeachersViewProps) => {
+const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps) => {
   const [searchValue, setSearchValue] = React.useState("")
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingTeacher, setEditingTeacher] = React.useState<Teacher | null>(null)
+
+  const subjectNameById = React.useMemo(
+    () => new Map(subjects.map((subject) => [subject.id, subject.name])),
+    [subjects]
+  )
 
   const form = useForm<TeacherFormInput, unknown, TeacherFormValues>({
     resolver: zodResolver(teacherFormSchema),
     defaultValues: {
       name: "",
       mobile: "",
+      subjectId: "",
       isActive: "true",
     },
   })
@@ -96,15 +109,19 @@ const TeachersView = ({ teachers, onSubmitTeacher }: TeachersViewProps) => {
     return teachers.filter(
       (teacher) =>
         teacher.name.toLowerCase().includes(normalizedSearch) ||
-        teacher.mobile.toLowerCase().includes(normalizedSearch)
+        teacher.mobile.toLowerCase().includes(normalizedSearch) ||
+        (subjectNameById.get(teacher.subjectId) ?? "")
+          .toLowerCase()
+          .includes(normalizedSearch)
     )
-  }, [teachers, searchValue])
+  }, [teachers, searchValue, subjectNameById])
 
   const openCreateDialog = () => {
     setEditingTeacher(null)
     form.reset({
       name: "",
       mobile: "",
+      subjectId: "",
       isActive: "true",
     })
     setIsDialogOpen(true)
@@ -116,6 +133,7 @@ const TeachersView = ({ teachers, onSubmitTeacher }: TeachersViewProps) => {
       form.reset({
         name: teacher.name,
         mobile: teacher.mobile,
+        subjectId: teacher.subjectId,
         isActive: String(teacher.isActive) as "true" | "false",
       })
       setIsDialogOpen(true)
@@ -143,6 +161,11 @@ const TeachersView = ({ teachers, onSubmitTeacher }: TeachersViewProps) => {
     {
       accessorKey: "mobile",
       header: "Mobile",
+    },
+    {
+      id: "subject",
+      header: "Subject",
+      cell: ({ row }) => subjectNameById.get(row.original.subjectId) ?? "Unknown Subject",
     },
     {
       id: "status",
@@ -328,6 +351,31 @@ const TeachersView = ({ teachers, onSubmitTeacher }: TeachersViewProps) => {
                     <FormLabel>Mobile</FormLabel>
                     <FormControl>
                       <Input placeholder="+94771234567" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="subjectId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    <FormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select subject" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subjects.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

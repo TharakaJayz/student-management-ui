@@ -29,6 +29,7 @@ interface Owner extends BaseDomain {
 interface Teacher extends BaseDomain {
   name: string;
   mobile: string;
+  subjectId:string;
 }
 
 interface ClassRoom extends BaseDomain {
@@ -85,7 +86,6 @@ interface Student_subject {
 interface Student_class_attendances {
   studentId: string;
   classId: string;
-  instituteId: string;
   attendanceDate: number;
   isPresent: boolean;
   isActive: boolean;
