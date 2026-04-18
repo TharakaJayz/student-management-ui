@@ -1,9 +1,27 @@
-import { Student } from "@/app/types/students";
+import type { Student } from "@/app/types/students";
 import { getSupabaseBrowserClient } from "../supabase/client";
-import { TableNames } from "../utils";
 
 
-export async function getAllStudents(instituteId: string): Promise<any[]> {
+type StudentRow = {
+  id: string;
+  name: string;
+  age: number;
+  image_url: string;
+  grade: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function normalizeStudentRelation(raw: unknown): StudentRow {
+  const s = (Array.isArray(raw) ? raw[0] : raw) as StudentRow | undefined;
+  if (!s) {
+    throw new Error("Enrollment row missing student");
+  }
+  return s;
+}
+
+export async function getAllStudents(instituteId: string): Promise<Student[]> {
     const supabase = getSupabaseBrowserClient();
     const { data, error } = await supabase.from("student_institute_enrollments")
         .select(`
@@ -18,21 +36,24 @@ export async function getAllStudents(instituteId: string): Promise<any[]> {
         updated_at
       )
     `)
-        .eq("institute_id", "1ba78024-33fd-4f63-a3a6-1117c3c5ae30")
+        .eq("institute_id", instituteId)
         .eq("is_active", true);
 
     console.log("student all data", data);
-    if (data) {
-
-        const students: any[] = data.map((singleData) => {
-            return {
-                ...singleData.student,
-            }
-        });
-
-        console.log("mapped students", students)
-    }
-
     if (error) throw error;
-    return data;
+    if (!data?.length) return [];
+
+    return data.map((row) => {
+        const s = normalizeStudentRelation((row as { student: unknown }).student);
+        return {
+            id: s.id,
+            name: s.name,
+            age: s.age,
+            image_url: s.image_url,
+            grade: s.grade,
+            is_active: s.is_active,
+            created_at: new Date(s.created_at),
+            updated_at: new Date(s.updated_at),
+        };
+    });
 }

@@ -1,5 +1,4 @@
-import InstituteSettingsContainer from '@/app/common/pages/institute-settings/InstituteSettingsContainer'
-import React from 'react'
+import InstituteSettingsContainer from "@/app/common/pages/institute-settings/InstituteSettingsContainer"
 
 const page = () => {
   return (

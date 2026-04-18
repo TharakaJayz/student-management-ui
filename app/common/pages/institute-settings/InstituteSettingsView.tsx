@@ -44,7 +44,7 @@ import {
 const instituteSchema = z.object({
   name: z.string().min(2, "Institute name should be at least 2 characters"),
   address: z.string().min(5, "Address should be at least 5 characters"),
-  ownerId: z.string().min(2, "Owner ID is required"),
+  owner_id: z.string().min(2, "Owner ID is required"),
 })
 
 const subjectSchema = z.object({
@@ -56,7 +56,7 @@ const classRoomSchema = z.object({
   name: z.string().min(2, "Class name should be at least 2 characters"),
   location: z.string().min(2, "Location should be at least 2 characters"),
   capacity: z.number().int().min(1, "Capacity should be at least 1"),
-  isAirConditioned: z.enum(["true", "false"]),
+  is_air_conditioned: z.enum(["true", "false"]),
 })
 
 type InstituteInput = z.input<typeof instituteSchema>
@@ -110,7 +110,7 @@ const InstituteSettingsView = ({
     defaultValues: {
       name: "",
       address: "",
-      ownerId: "",
+      owner_id: "",
     },
   })
 
@@ -128,7 +128,7 @@ const InstituteSettingsView = ({
       name: "",
       location: "",
       capacity: 30,
-      isAirConditioned: "false",
+      is_air_conditioned: "false",
     },
   })
 
@@ -136,7 +136,7 @@ const InstituteSettingsView = ({
     instituteForm.reset({
       name: "",
       address: "",
-      ownerId: "",
+      owner_id: "",
     })
     setIsInstituteDialogOpen(true)
   }
@@ -146,7 +146,7 @@ const InstituteSettingsView = ({
     instituteForm.reset({
       name: institute.name,
       address: institute.address,
-      ownerId: institute.ownerId,
+      owner_id: institute.owner_id,
     })
     setIsInstituteDialogOpen(true)
   }
@@ -175,7 +175,7 @@ const InstituteSettingsView = ({
       name: "",
       location: "",
       capacity: 30,
-      isAirConditioned: "false",
+      is_air_conditioned: "false",
     })
     setIsClassRoomDialogOpen(true)
   }
@@ -186,7 +186,7 @@ const InstituteSettingsView = ({
       name: classRoom.name,
       location: classRoom.location,
       capacity: classRoom.capacity,
-      isAirConditioned: String(classRoom.isAirConditioned) as "true" | "false",
+      is_air_conditioned: String(classRoom.is_air_conditioned) as "true" | "false",
     })
     setIsClassRoomDialogOpen(true)
   }
@@ -285,7 +285,7 @@ const InstituteSettingsView = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Owner ID</p>
-                <p className="font-medium">{institute?.ownerId ?? "-"}</p>
+                <p className="font-medium">{institute?.owner_id ?? "-"}</p>
               </div>
               <div className="sm:col-span-2">
                 <p className="text-sm text-muted-foreground">Address</p>
@@ -366,7 +366,7 @@ const InstituteSettingsView = ({
                           <TableCell>{classRoom.name}</TableCell>
                           <TableCell>{classRoom.location}</TableCell>
                           <TableCell>{classRoom.capacity}</TableCell>
-                          <TableCell>{classRoom.isAirConditioned ? "Yes" : "No"}</TableCell>
+                          <TableCell>{classRoom.is_air_conditioned ? "Yes" : "No"}</TableCell>
                           <TableCell>
                             <Button
                               type="button"
@@ -402,7 +402,7 @@ const InstituteSettingsView = ({
             instituteForm.reset({
               name: "",
               address: "",
-              ownerId: "",
+              owner_id: "",
             })
           }
         }}
@@ -447,7 +447,7 @@ const InstituteSettingsView = ({
               />
               <FormField
                 control={instituteForm.control}
-                name="ownerId"
+                name="owner_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Owner ID</FormLabel>
@@ -605,7 +605,7 @@ const InstituteSettingsView = ({
 
               <FormField
                 control={classRoomForm.control}
-                name="isAirConditioned"
+                name="is_air_conditioned"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Air Conditioned</FormLabel>

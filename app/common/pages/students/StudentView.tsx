@@ -52,9 +52,9 @@ import type { Student } from "@/app/types/students"
 const studentFormSchema = z.object({
   name: z.string().min(2, "Name should be at least 2 characters"),
   age: z.number().int().min(3, "Age should be at least 3"),
-  imageUrl: z.string().url("Provide a valid image URL"),
+  image_url: z.string().url("Provide a valid image URL"),
   grade: z.string().min(1, "Grade is required"),
-  isActive: z.enum(["true", "false"]),
+  is_active: z.enum(["true", "false"]),
 })
 
 type StudentFormInput = z.input<typeof studentFormSchema>
@@ -85,14 +85,14 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
     defaultValues: {
       name: "",
       age: 10,
-      imageUrl: "",
+      image_url: "",
       grade: "",
-      isActive: "true",
+      is_active: "true",
     },
   })
 
   const activeStudents = React.useMemo(
-    () => students.filter((student) => student.isActive),
+    () => students.filter((student) => student.is_active),
     [students]
   )
 
@@ -142,9 +142,9 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
     form.reset({
       name: "",
       age: 10,
-      imageUrl: "",
+      image_url: "",
       grade: "",
-      isActive: "true",
+      is_active: "true",
     })
     setIsDialogOpen(true)
   }
@@ -154,9 +154,9 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
     form.reset({
       name: student.name,
       age: student.age,
-      imageUrl: student.imageUrl,
+      image_url: student.image_url,
       grade: student.grade,
-      isActive: String(student.isActive) as "true" | "false",
+      is_active: String(student.is_active) as "true" | "false",
     })
     setIsDialogOpen(true)
   }, [form])
@@ -189,7 +189,7 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
     {
       id: "status",
       header: "Status",
-      cell: ({ row }) => (row.original.isActive ? "Active" : "Inactive"),
+      cell: ({ row }) => (row.original.is_active ? "Active" : "Inactive"),
     },
     {
       id: "actions",
@@ -436,7 +436,7 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
 
               <FormField
                 control={form.control}
-                name="imageUrl"
+                name="image_url"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Image URL</FormLabel>
@@ -450,7 +450,7 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
 
               <FormField
                 control={form.control}
-                name="isActive"
+                name="is_active"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Student Status</FormLabel>

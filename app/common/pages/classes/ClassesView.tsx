@@ -53,20 +53,20 @@ import {
 const classSchema = z
   .object({
     name: z.string().min(2, "Class name should be at least 2 characters"),
-    classRoomId: z.string().min(1, "Class room is required"),
-    teacherId: z.string().min(1, "Teacher is required"),
-    subjectId: z.string().min(1, "Subject is required"),
+    class_room_id: z.string().min(1, "Class room is required"),
+    teacher_id: z.string().min(1, "Teacher is required"),
+    subject_id: z.string().min(1, "Subject is required"),
     grade: z.string().min(1, "Grade is required"),
-    startTime: z.number().min(0, "Start time should be between 0 and 23").max(23),
-    endTime: z.number().min(0, "End time should be between 0 and 23").max(23),
+    start_time: z.number().min(0, "Start time should be between 0 and 23").max(23),
+    end_time: z.number().min(0, "End time should be between 0 and 23").max(23),
     frequency: z.enum(["WEEKLY", "OTHER"]),
     day: z.nativeEnum(Days),
-    classFee: z.number().min(0, "Class fee cannot be negative"),
-    isActive: z.enum(["true", "false"]),
+    class_fee: z.number().min(0, "Class fee cannot be negative"),
+    is_active: z.enum(["true", "false"]),
   })
-  .refine((values) => values.endTime > values.startTime, {
+  .refine((values) => values.end_time > values.start_time, {
     message: "End time should be greater than start time",
-    path: ["endTime"],
+    path: ["end_time"],
   })
 
 type ClassInput = z.input<typeof classSchema>
@@ -135,28 +135,28 @@ const ClassesView = ({
     resolver: zodResolver(classSchema),
     defaultValues: {
       name: "",
-      classRoomId: "",
-      teacherId: "",
-      subjectId: "",
+      class_room_id: "",
+      teacher_id: "",
+      subject_id: "",
       grade: "",
-      startTime: 8,
-      endTime: 10,
+      start_time: 8,
+      end_time: 10,
       frequency: "WEEKLY",
       day: Days.MONDAY,
-      classFee: 0,
-      isActive: "true",
+      class_fee: 0,
+      is_active: "true",
     },
   })
 
   const today = getCurrentDay()
 
   const todaysClasses = React.useMemo(
-    () => classes.filter((item) => item.day === today && item.isActive),
+    () => classes.filter((item) => item.day === today && item.is_active),
     [classes, today]
   )
 
   const todaysRevenue = React.useMemo(
-    () => todaysClasses.reduce((total, item) => total + item.classFee, 0),
+    () => todaysClasses.reduce((total, item) => total + item.class_fee, 0),
     [todaysClasses]
   )
 
@@ -168,8 +168,8 @@ const ClassesView = ({
       return (
         item.name.toLowerCase().includes(normalizedSearch) ||
         item.grade.toLowerCase().includes(normalizedSearch) ||
-        (teacherNameById.get(item.teacherId) ?? "").toLowerCase().includes(normalizedSearch) ||
-        (subjectNameById.get(item.subjectId) ?? "").toLowerCase().includes(normalizedSearch)
+        (teacherNameById.get(item.teacher_id) ?? "").toLowerCase().includes(normalizedSearch) ||
+        (subjectNameById.get(item.subject_id) ?? "").toLowerCase().includes(normalizedSearch)
       )
     })
   }, [classes, searchValue, teacherNameById, subjectNameById])
@@ -178,16 +178,16 @@ const ClassesView = ({
     setEditingClass(null)
     form.reset({
       name: "",
-      classRoomId: "",
-      teacherId: "",
-      subjectId: "",
+      class_room_id: "",
+      teacher_id: "",
+      subject_id: "",
       grade: "",
-      startTime: 8,
-      endTime: 10,
+      start_time: 8,
+      end_time: 10,
       frequency: "WEEKLY",
       day: Days.MONDAY,
-      classFee: 0,
-      isActive: "true",
+      class_fee: 0,
+      is_active: "true",
     })
     setIsDialogOpen(true)
   }
@@ -197,16 +197,16 @@ const ClassesView = ({
       setEditingClass(item)
       form.reset({
         name: item.name,
-        classRoomId: item.classRoomId,
-        teacherId: item.teacherId,
-        subjectId: item.subjectId,
+        class_room_id: item.class_room_id,
+        teacher_id: item.teacher_id,
+        subject_id: item.subject_id,
         grade: item.grade,
-        startTime: item.startTime,
-        endTime: item.endTime,
+        start_time: item.start_time,
+        end_time: item.end_time,
         frequency: item.frequency,
         day: item.day,
-        classFee: item.classFee,
-        isActive: String(item.isActive) as "true" | "false",
+        class_fee: item.class_fee,
+        is_active: String(item.is_active) as "true" | "false",
       })
       setIsDialogOpen(true)
     },
@@ -237,12 +237,12 @@ const ClassesView = ({
     {
       id: "subject",
       header: "Subject",
-      cell: ({ row }) => subjectNameById.get(row.original.subjectId) ?? "Unknown",
+      cell: ({ row }) => subjectNameById.get(row.original.subject_id) ?? "Unknown",
     },
     {
       id: "teacher",
       header: "Teacher",
-      cell: ({ row }) => teacherNameById.get(row.original.teacherId) ?? "Unknown",
+      cell: ({ row }) => teacherNameById.get(row.original.teacher_id) ?? "Unknown",
     },
     {
       accessorKey: "day",
@@ -251,7 +251,7 @@ const ClassesView = ({
     {
       id: "time",
       header: "Time",
-      cell: ({ row }) => `${formatHour(row.original.startTime)} - ${formatHour(row.original.endTime)}`,
+      cell: ({ row }) => `${formatHour(row.original.start_time)} - ${formatHour(row.original.end_time)}`,
     },
     {
       id: "actions",
@@ -304,7 +304,7 @@ const ClassesView = ({
             <CardTitle className="text-sm text-muted-foreground">Total Active Classes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold text-foreground">{classes.filter((item) => item.isActive).length}</p>
+            <p className="text-3xl font-semibold text-foreground">{classes.filter((item) => item.is_active).length}</p>
           </CardContent>
         </Card>
       </div>
@@ -443,7 +443,7 @@ const ClassesView = ({
                 />
                 <FormField
                   control={form.control}
-                  name="classFee"
+                  name="class_fee"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Class Fee (LKR)</FormLabel>
@@ -465,7 +465,7 @@ const ClassesView = ({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="classRoomId"
+                  name="class_room_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Class Room</FormLabel>
@@ -489,7 +489,7 @@ const ClassesView = ({
                 />
                 <FormField
                   control={form.control}
-                  name="teacherId"
+                  name="teacher_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Teacher</FormLabel>
@@ -513,7 +513,7 @@ const ClassesView = ({
                 />
                 <FormField
                   control={form.control}
-                  name="subjectId"
+                  name="subject_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Subject</FormLabel>
@@ -588,7 +588,7 @@ const ClassesView = ({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="startTime"
+                  name="start_time"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Start Time (Hour)</FormLabel>
@@ -608,7 +608,7 @@ const ClassesView = ({
                 />
                 <FormField
                   control={form.control}
-                  name="endTime"
+                  name="end_time"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>End Time (Hour)</FormLabel>
@@ -628,7 +628,7 @@ const ClassesView = ({
                 />
                 <FormField
                   control={form.control}
-                  name="isActive"
+                  name="is_active"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>

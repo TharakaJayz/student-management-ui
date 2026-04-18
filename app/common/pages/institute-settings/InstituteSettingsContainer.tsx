@@ -13,32 +13,32 @@ import InstituteSettingsView, {
   type SubjectMutationPayload,
 } from "./InstituteSettingsView"
 
-const initialIsNewUser = false;
+const initialIsNewUser = true
 
 const parseInstituteForm = (
   payload: InstituteFormValues
-): Omit<Institute, "id" | "createdAt" | "updatedAt" | "isActive"> => ({
+): Omit<Institute, "id" | "created_at" | "updated_at" | "is_active"> => ({
   name: payload.name,
   address: payload.address,
-  ownerId: payload.ownerId,
+  owner_id: payload.owner_id,
 })
 
 const parseSubjectForm = (
   payload: SubjectFormValues
-): Omit<Subject, "id" | "createdAt" | "updatedAt" | "isActive"> => ({
+): Omit<Subject, "id" | "created_at" | "updated_at" | "is_active"> => ({
   name: payload.name,
   medium: payload.medium,
 })
 
 const parseClassRoomForm = (
   payload: ClassRoomFormValues,
-  instituteId: string
-): Omit<ClassRoom, "id" | "createdAt" | "updatedAt" | "isActive"> => ({
+  institute_id: string
+): Omit<ClassRoom, "id" | "created_at" | "updated_at" | "is_active"> => ({
   name: payload.name,
-  instituteId,
+  institute_id,
   location: payload.location,
   capacity: payload.capacity,
-  isAirConditioned: payload.isAirConditioned === "true",
+  is_air_conditioned: payload.is_air_conditioned === "true",
 })
 
 const InstituteSettingsContainer = () => {
@@ -55,9 +55,9 @@ const InstituteSettingsContainer = () => {
       const createdInstitute: Institute = {
         id: `ins-${crypto.randomUUID()}`,
         ...parsedInstitute,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
+        is_active: true,
+        created_at: now,
+        updated_at: now,
       }
 
       setInstitute(createdInstitute)
@@ -73,7 +73,7 @@ const InstituteSettingsContainer = () => {
       return {
         ...previous,
         ...parseInstituteForm(payload.data),
-        updatedAt: new Date(),
+        updated_at: new Date(),
       }
     })
   }
@@ -88,9 +88,9 @@ const InstituteSettingsContainer = () => {
         {
           id: `sub-${crypto.randomUUID()}`,
           ...parsedSubject,
-          isActive: true,
-          createdAt: now,
-          updatedAt: now,
+          is_active: true,
+          created_at: now,
+          updated_at: now,
         },
       ])
       return
@@ -105,7 +105,7 @@ const InstituteSettingsContainer = () => {
         return {
           ...subject,
           ...parseSubjectForm(payload.data),
-          updatedAt: new Date(),
+          updated_at: new Date(),
         }
       })
     )
@@ -123,9 +123,9 @@ const InstituteSettingsContainer = () => {
         {
           id: `class-${crypto.randomUUID()}`,
           ...parsedClassRoom,
-          isActive: true,
-          createdAt: now,
-          updatedAt: now,
+          is_active: true,
+          created_at: now,
+          updated_at: now,
         },
       ])
       return
@@ -140,7 +140,7 @@ const InstituteSettingsContainer = () => {
         return {
           ...classRoom,
           ...parseClassRoomForm(payload.data, institute.id),
-          updatedAt: new Date(),
+          updated_at: new Date(),
         }
       })
     )

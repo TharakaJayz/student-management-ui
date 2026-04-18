@@ -55,8 +55,8 @@ const teacherFormSchema = z.object({
     .string()
     .min(10, "Mobile should be at least 10 digits")
     .regex(/^\+?[0-9]+$/, "Use numbers only (optionally starting with +)"),
-  subjectId: z.string().min(1, "Subject is required"),
-  isActive: z.enum(["true", "false"]),
+  subject_id: z.string().min(1, "Subject is required"),
+  is_active: z.enum(["true", "false"]),
 })
 
 type TeacherFormInput = z.input<typeof teacherFormSchema>
@@ -92,13 +92,13 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
     defaultValues: {
       name: "",
       mobile: "",
-      subjectId: "",
-      isActive: "true",
+      subject_id: "",
+      is_active: "true",
     },
   })
 
   const activeTeachers = React.useMemo(
-    () => teachers.filter((teacher) => teacher.isActive),
+    () => teachers.filter((teacher) => teacher.is_active),
     [teachers]
   )
 
@@ -110,7 +110,7 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
       (teacher) =>
         teacher.name.toLowerCase().includes(normalizedSearch) ||
         teacher.mobile.toLowerCase().includes(normalizedSearch) ||
-        (subjectNameById.get(teacher.subjectId) ?? "")
+        (subjectNameById.get(teacher.subject_id) ?? "")
           .toLowerCase()
           .includes(normalizedSearch)
     )
@@ -121,8 +121,8 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
     form.reset({
       name: "",
       mobile: "",
-      subjectId: "",
-      isActive: "true",
+      subject_id: "",
+      is_active: "true",
     })
     setIsDialogOpen(true)
   }
@@ -133,8 +133,8 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
       form.reset({
         name: teacher.name,
         mobile: teacher.mobile,
-        subjectId: teacher.subjectId,
-        isActive: String(teacher.isActive) as "true" | "false",
+        subject_id: teacher.subject_id,
+        is_active: String(teacher.is_active) as "true" | "false",
       })
       setIsDialogOpen(true)
     },
@@ -165,12 +165,12 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
     {
       id: "subject",
       header: "Subject",
-      cell: ({ row }) => subjectNameById.get(row.original.subjectId) ?? "Unknown Subject",
+      cell: ({ row }) => subjectNameById.get(row.original.subject_id) ?? "Unknown Subject",
     },
     {
       id: "status",
       header: "Status",
-      cell: ({ row }) => (row.original.isActive ? "Active" : "Inactive"),
+      cell: ({ row }) => (row.original.is_active ? "Active" : "Inactive"),
     },
     {
       id: "actions",
@@ -359,7 +359,7 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
 
               <FormField
                 control={form.control}
-                name="subjectId"
+                name="subject_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
@@ -384,7 +384,7 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
 
               <FormField
                 control={form.control}
-                name="isActive"
+                name="is_active"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Teacher Status</FormLabel>

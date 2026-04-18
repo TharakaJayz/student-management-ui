@@ -3,16 +3,16 @@ import { BaseDomain } from "./common";
 export interface Institute extends BaseDomain {
     name: string;
     address: string;
-    ownerId: string;
+    owner_id: string;
   }
 
 
   export interface ClassRoom extends BaseDomain {
     name: string;
-    instituteId: string;
+    institute_id: string;
     location: string;
     capacity: number;
-    isAirConditioned: boolean;
+    is_air_conditioned: boolean;
   }
   
   export interface Subject extends BaseDomain {
