@@ -41,6 +41,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+const ownerProfileSchema = z.object({
+  name: z.string().min(2, "Name should be at least 2 characters"),
+  mobile: z.string().min(7, "Enter a valid mobile number"),
+})
+
 const instituteSchema = z.object({
   name: z.string().min(2, "Institute name should be at least 2 characters"),
   address: z.string().min(5, "Address should be at least 5 characters"),
@@ -58,6 +63,9 @@ const classRoomSchema = z.object({
   capacity: z.number().int().min(1, "Capacity should be at least 1"),
   is_air_conditioned: z.enum(["true", "false"]),
 })
+
+type OwnerProfileInput = z.input<typeof ownerProfileSchema>
+export type OwnerFormValues = z.output<typeof ownerProfileSchema>
 
 type InstituteInput = z.input<typeof instituteSchema>
 export type InstituteFormValues = z.output<typeof instituteSchema>
@@ -80,11 +88,16 @@ export type ClassRoomMutationPayload =
   | { mode: "create"; data: ClassRoomFormValues }
   | { mode: "update"; id: string; data: ClassRoomFormValues }
 
+export type NewUserSetupStep = "owner" | "institute"
+
 export interface InstituteSettingsViewProps {
   isNewUser: boolean
+  newUserSetupStep: NewUserSetupStep
+  authUserId: string | null
   institute: Institute | null
   subjects: Subject[]
   classRooms: ClassRoom[]
+  onSubmitOwnerProfile: (data: OwnerFormValues) => void
   onSubmitInstitute: (payload: InstituteMutationPayload) => void
   onSubmitSubject: (payload: SubjectMutationPayload) => void
   onSubmitClassRoom: (payload: ClassRoomMutationPayload) => void
@@ -92,9 +105,12 @@ export interface InstituteSettingsViewProps {
 
 const InstituteSettingsView = ({
   isNewUser,
+  newUserSetupStep,
+  authUserId,
   institute,
   subjects,
   classRooms,
+  onSubmitOwnerProfile,
   onSubmitInstitute,
   onSubmitSubject,
   onSubmitClassRoom,
@@ -104,6 +120,14 @@ const InstituteSettingsView = ({
   const [isClassRoomDialogOpen, setIsClassRoomDialogOpen] = React.useState(false)
   const [editingSubject, setEditingSubject] = React.useState<Subject | null>(null)
   const [editingClassRoom, setEditingClassRoom] = React.useState<ClassRoom | null>(null)
+
+  const ownerProfileForm = useForm<OwnerProfileInput, unknown, OwnerFormValues>({
+    resolver: zodResolver(ownerProfileSchema),
+    defaultValues: {
+      name: "",
+      mobile: "",
+    },
+  })
 
   const instituteForm = useForm<InstituteInput, unknown, InstituteFormValues>({
     resolver: zodResolver(instituteSchema),
@@ -136,7 +160,7 @@ const InstituteSettingsView = ({
     instituteForm.reset({
       name: "",
       address: "",
-      owner_id: "",
+      owner_id: authUserId ?? "",
     })
     setIsInstituteDialogOpen(true)
   }
@@ -224,23 +248,88 @@ const InstituteSettingsView = ({
     classRoomForm.reset()
   }
 
+  const handleOwnerProfileSubmit = (data: OwnerFormValues) => {
+    onSubmitOwnerProfile(data)
+  }
+
   return (
     <div className="space-y-6 px-1 py-2">
-      {isNewUser ? (
+      {isNewUser && newUserSetupStep === "owner" ? (
         <Card className="max-w-3xl">
           <CardHeader>
-            <CardTitle>Register Your Institute</CardTitle>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Step 1 of 2
+            </p>
+            <CardTitle>Owner profile</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              First, create your institute. After that, you can manage classrooms and subjects.
+              Add your owner details. Your signed-in account id will be used as the owner record id
+              when you save (via API later).
+            </p>
+            {!authUserId ? (
+              <p className="text-sm text-muted-foreground">Loading your account…</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Account id: <span className="font-mono text-foreground">{authUserId}</span>
+              </p>
+            )}
+            <Form {...ownerProfileForm}>
+              <form
+                className="space-y-4"
+                onSubmit={ownerProfileForm.handleSubmit(handleOwnerProfileSubmit)}
+              >
+                <FormField
+                  control={ownerProfileForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your name" autoComplete="name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={ownerProfileForm.control}
+                  name="mobile"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mobile</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+94 77 123 4567" autoComplete="tel" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={!authUserId}>
+                  Continue to institute setup
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      ) : isNewUser && newUserSetupStep === "institute" ? (
+        <Card className="max-w-3xl">
+          <CardHeader>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Step 2 of 2
+            </p>
+            <CardTitle>Register your institute</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Create your institute. After that, you can manage classrooms and subjects.
             </p>
             <Button type="button" onClick={openCreateInstituteDialog}>
-              Create Institute
+              Create institute
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : !isNewUser ? (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Card>
@@ -392,7 +481,7 @@ const InstituteSettingsView = ({
             </Card>
           </div>
         </>
-      )}
+      ) : null}
 
       <Dialog
         open={isInstituteDialogOpen}
@@ -402,7 +491,7 @@ const InstituteSettingsView = ({
             instituteForm.reset({
               name: "",
               address: "",
-              owner_id: "",
+              owner_id: authUserId ?? "",
             })
           }
         }}
@@ -452,8 +541,18 @@ const InstituteSettingsView = ({
                   <FormItem>
                     <FormLabel>Owner ID</FormLabel>
                     <FormControl>
-                      <Input placeholder="owner-123" {...field} />
+                      <Input
+                        placeholder="owner-123"
+                        readOnly={Boolean(!institute && authUserId)}
+                        className={!institute && authUserId ? "bg-muted" : undefined}
+                        {...field}
+                      />
                     </FormControl>
+                    {!institute && authUserId ? (
+                      <p className="text-xs text-muted-foreground">
+                        Prefilled from your signed-in account.
+                      </p>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}

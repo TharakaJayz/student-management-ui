@@ -3,12 +3,15 @@
 import React from "react"
 
 import type { ClassRoom, Institute, Subject } from "@/app/types/institute"
+import type { Owner } from "@/app/types/owner"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 import InstituteSettingsView, {
   type ClassRoomFormValues,
   type ClassRoomMutationPayload,
   type InstituteFormValues,
   type InstituteMutationPayload,
+  type OwnerFormValues,
   type SubjectFormValues,
   type SubjectMutationPayload,
 } from "./InstituteSettingsView"
@@ -43,9 +46,50 @@ const parseClassRoomForm = (
 
 const InstituteSettingsContainer = () => {
   const [isNewUser, setIsNewUser] = React.useState(initialIsNewUser)
+  const [newUserSetupStep, setNewUserSetupStep] = React.useState<
+    "owner" | "institute"
+  >("owner")
+  const [authUserId, setAuthUserId] = React.useState<string | null>(null)
   const [institute, setInstitute] = React.useState<Institute | null>(null)
   const [subjects, setSubjects] = React.useState<Subject[]>([])
   const [classRooms, setClassRooms] = React.useState<ClassRoom[]>([])
+
+  React.useEffect(() => {
+    let cancelled = false
+    void getSupabaseBrowserClient()
+      .auth.getUser()
+      .then(({ data: { user } }) => {
+        if (!cancelled && user?.id) {
+          setAuthUserId(user.id)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleSubmitOwnerProfile = React.useCallback(
+    (data: OwnerFormValues) => {
+      if (!authUserId) {
+        console.warn("Owner profile: no authenticated user id yet")
+        return
+      }
+
+      const now = new Date()
+      const owner: Owner = {
+        id: authUserId,
+        name: data.name,
+        mobile: data.mobile,
+        is_active: true,
+        created_at: now,
+        updated_at: now,
+      }
+
+      console.log("Owner profile (pending edge function)", owner)
+      setNewUserSetupStep("institute")
+    },
+    [authUserId]
+  )
 
   const handleSubmitInstitute = (payload: InstituteMutationPayload) => {
     if (payload.mode === "create") {
@@ -150,9 +194,12 @@ const InstituteSettingsContainer = () => {
     <div>
       <InstituteSettingsView
         isNewUser={isNewUser}
+        newUserSetupStep={newUserSetupStep}
+        authUserId={authUserId}
         institute={institute}
         subjects={subjects}
         classRooms={classRooms}
+        onSubmitOwnerProfile={handleSubmitOwnerProfile}
         onSubmitInstitute={handleSubmitInstitute}
         onSubmitSubject={handleSubmitSubject}
         onSubmitClassRoom={handleSubmitClassRoom}
