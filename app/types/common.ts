@@ -11,6 +11,6 @@ export enum Days {
   export interface BaseDomain {
     id: string;
     isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    created_at: Date;
+    updated_at: Date;
   }
