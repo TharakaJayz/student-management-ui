@@ -97,10 +97,12 @@ export interface InstituteSettingsViewProps {
   institute: Institute | null
   subjects: Subject[]
   classRooms: ClassRoom[]
-  onSubmitOwnerProfile: (data: OwnerFormValues) => void
-  onSubmitInstitute: (payload: InstituteMutationPayload) => void
-  onSubmitSubject: (payload: SubjectMutationPayload) => void
-  onSubmitClassRoom: (payload: ClassRoomMutationPayload) => void
+  onSubmitOwnerProfile: (data: OwnerFormValues) => void | Promise<void>
+  ownerProfileSubmitting?: boolean
+  ownerProfileError?: string | null
+  onSubmitInstitute: (payload: InstituteMutationPayload) => void | Promise<void>
+  onSubmitSubject: (payload: SubjectMutationPayload) => void | Promise<void>
+  onSubmitClassRoom: (payload: ClassRoomMutationPayload) => void | Promise<void>
 }
 
 const InstituteSettingsView = ({
@@ -111,13 +113,18 @@ const InstituteSettingsView = ({
   subjects,
   classRooms,
   onSubmitOwnerProfile,
+  ownerProfileSubmitting = false,
+  ownerProfileError = null,
   onSubmitInstitute,
   onSubmitSubject,
   onSubmitClassRoom,
 }: InstituteSettingsViewProps) => {
   const [isInstituteDialogOpen, setIsInstituteDialogOpen] = React.useState(false)
+  const [isInstituteSaving, setIsInstituteSaving] = React.useState(false)
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = React.useState(false)
+  const [isSubjectSaving, setIsSubjectSaving] = React.useState(false)
   const [isClassRoomDialogOpen, setIsClassRoomDialogOpen] = React.useState(false)
+  const [isClassRoomSaving, setIsClassRoomSaving] = React.useState(false)
   const [editingSubject, setEditingSubject] = React.useState<Subject | null>(null)
   const [editingClassRoom, setEditingClassRoom] = React.useState<ClassRoom | null>(null)
 
@@ -215,41 +222,60 @@ const InstituteSettingsView = ({
     setIsClassRoomDialogOpen(true)
   }
 
-  const handleInstituteSubmit = (data: InstituteFormValues) => {
-    if (institute) {
-      onSubmitInstitute({ mode: "update", id: institute.id, data })
-    } else {
-      onSubmitInstitute({ mode: "create", data })
+  const handleInstituteSubmit = async (data: InstituteFormValues) => {
+    setIsInstituteSaving(true)
+    try {
+      if (institute) {
+        await onSubmitInstitute({ mode: "update", id: institute.id, data })
+      } else {
+        await onSubmitInstitute({ mode: "create", data })
+      }
+      setIsInstituteDialogOpen(false)
+    } catch {
+      // Error toast is shown in the container
+    } finally {
+      setIsInstituteSaving(false)
     }
-    setIsInstituteDialogOpen(false)
   }
 
-  const handleSubjectSubmit = (data: SubjectFormValues) => {
-    if (editingSubject) {
-      onSubmitSubject({ mode: "update", id: editingSubject.id, data })
-    } else {
-      onSubmitSubject({ mode: "create", data })
+  const handleSubjectSubmit = async (data: SubjectFormValues) => {
+    setIsSubjectSaving(true)
+    try {
+      if (editingSubject) {
+        await onSubmitSubject({ mode: "update", id: editingSubject.id, data })
+      } else {
+        await onSubmitSubject({ mode: "create", data })
+      }
+      setEditingSubject(null)
+      setIsSubjectDialogOpen(false)
+      subjectForm.reset()
+    } catch {
+      // Toast is shown in the container
+    } finally {
+      setIsSubjectSaving(false)
     }
-
-    setEditingSubject(null)
-    setIsSubjectDialogOpen(false)
-    subjectForm.reset()
   }
 
-  const handleClassRoomSubmit = (data: ClassRoomFormValues) => {
-    if (editingClassRoom) {
-      onSubmitClassRoom({ mode: "update", id: editingClassRoom.id, data })
-    } else {
-      onSubmitClassRoom({ mode: "create", data })
+  const handleClassRoomSubmit = async (data: ClassRoomFormValues) => {
+    setIsClassRoomSaving(true)
+    try {
+      if (editingClassRoom) {
+        await onSubmitClassRoom({ mode: "update", id: editingClassRoom.id, data })
+      } else {
+        await onSubmitClassRoom({ mode: "create", data })
+      }
+      setEditingClassRoom(null)
+      setIsClassRoomDialogOpen(false)
+      classRoomForm.reset()
+    } catch {
+      // Toast is shown in the container
+    } finally {
+      setIsClassRoomSaving(false)
     }
-
-    setEditingClassRoom(null)
-    setIsClassRoomDialogOpen(false)
-    classRoomForm.reset()
   }
 
-  const handleOwnerProfileSubmit = (data: OwnerFormValues) => {
-    onSubmitOwnerProfile(data)
+  const handleOwnerProfileSubmit = async (data: OwnerFormValues) => {
+    await onSubmitOwnerProfile(data)
   }
 
   return (
@@ -264,9 +290,16 @@ const InstituteSettingsView = ({
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Add your owner details. Your signed-in account id will be used as the owner record id
-              when you save (via API later).
+              Add your owner details. Your profile is saved with your signed-in account.
             </p>
+            {ownerProfileError ? (
+              <p
+                className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                role="alert"
+              >
+                {ownerProfileError}
+              </p>
+            ) : null}
             {!authUserId ? (
               <p className="text-sm text-muted-foreground">Loading your account…</p>
             ) : (
@@ -305,8 +338,8 @@ const InstituteSettingsView = ({
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={!authUserId}>
-                  Continue to institute setup
+                <Button type="submit" disabled={!authUserId || ownerProfileSubmitting}>
+                  {ownerProfileSubmitting ? "Saving…" : "Continue to institute setup"}
                 </Button>
               </form>
             </Form>
@@ -486,6 +519,7 @@ const InstituteSettingsView = ({
       <Dialog
         open={isInstituteDialogOpen}
         onOpenChange={(open) => {
+          if (!open && isInstituteSaving) return
           setIsInstituteDialogOpen(open)
           if (!open && !institute) {
             instituteForm.reset({
@@ -558,10 +592,23 @@ const InstituteSettingsView = ({
                 )}
               />
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsInstituteDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isInstituteSaving}
+                  onClick={() => setIsInstituteDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">{institute ? "Update Institute" : "Create Institute"}</Button>
+                <Button type="submit" disabled={isInstituteSaving}>
+                  {institute
+                    ? isInstituteSaving
+                      ? "Updating…"
+                      : "Update Institute"
+                    : isInstituteSaving
+                      ? "Creating…"
+                      : "Create Institute"}
+                </Button>
               </DialogFooter>
             </form>
           </Form>
@@ -571,6 +618,7 @@ const InstituteSettingsView = ({
       <Dialog
         open={isSubjectDialogOpen}
         onOpenChange={(open) => {
+          if (!open && isSubjectSaving) return
           setIsSubjectDialogOpen(open)
           if (!open) {
             setEditingSubject(null)
@@ -623,10 +671,21 @@ const InstituteSettingsView = ({
                 )}
               />
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsSubjectDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSubjectSaving}
+                  onClick={() => setIsSubjectDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">{editingSubject ? "Update Subject" : "Create Subject"}</Button>
+                <Button type="submit" disabled={isSubjectSaving}>
+                  {isSubjectSaving
+                    ? "Saving…"
+                    : editingSubject
+                      ? "Update Subject"
+                      : "Create Subject"}
+                </Button>
               </DialogFooter>
             </form>
           </Form>
@@ -636,6 +695,7 @@ const InstituteSettingsView = ({
       <Dialog
         open={isClassRoomDialogOpen}
         onOpenChange={(open) => {
+          if (!open && isClassRoomSaving) return
           setIsClassRoomDialogOpen(open)
           if (!open) {
             setEditingClassRoom(null)
@@ -725,11 +785,20 @@ const InstituteSettingsView = ({
               />
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsClassRoomDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isClassRoomSaving}
+                  onClick={() => setIsClassRoomDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {editingClassRoom ? "Update Class Room" : "Create Class Room"}
+                <Button type="submit" disabled={isClassRoomSaving}>
+                  {isClassRoomSaving
+                    ? "Saving…"
+                    : editingClassRoom
+                      ? "Update Class Room"
+                      : "Create Class Room"}
                 </Button>
               </DialogFooter>
             </form>

@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+
+import { SonnerProvider } from "@/components/sonner-provider";
+
 import "./globals.css";
 
 const inter = Inter({
@@ -25,6 +28,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
+        <SonnerProvider />
       </body>
     </html>
   );

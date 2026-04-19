@@ -1,10 +1,82 @@
-import { Bell, Menu, Search, UserCircle2 } from "lucide-react"
+"use client"
+
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Bell, LogOut, Menu, Search, UserCircle2 } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { getOwnerById } from "@/lib/api/institute-settings.api"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 type TopBarProps = {
   onToggleSidebar: () => void
 }
 
 const TopBar = ({ onToggleSidebar }: TopBarProps) => {
+  const router = useRouter()
+  const [ownerDisplayName, setOwnerDisplayName] = useState<string | null>(null)
+  const [logoutPending, setLogoutPending] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      const {
+        data: { user },
+      } = await getSupabaseBrowserClient().auth.getUser()
+      if (!user || cancelled) return
+
+      try {
+        const owner = await getOwnerById(user.id)
+        if (cancelled) return
+        if (owner?.name) {
+          setOwnerDisplayName(owner.name)
+          return
+        }
+        setOwnerDisplayName(
+          (typeof user.user_metadata?.full_name === "string"
+            ? user.user_metadata.full_name
+            : null) ??
+            user.email ??
+            "Account"
+        )
+      } catch {
+        if (!cancelled) {
+          setOwnerDisplayName(
+            (typeof user.user_metadata?.full_name === "string"
+              ? user.user_metadata.full_name
+              : null) ??
+              user.email ??
+              "Account"
+          )
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleSignOut() {
+    setLogoutPending(true)
+    try {
+      await getSupabaseBrowserClient().auth.signOut()
+      router.push("/")
+      router.refresh()
+    } finally {
+      setLogoutPending(false)
+    }
+  }
+
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-border text-topbar-foreground bg-background">
       <div className="flex h-16 items-center">
@@ -49,13 +121,39 @@ const TopBar = ({ onToggleSidebar }: TopBarProps) => {
           >
             <Bell className="size-4" />
           </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-2 py-1"
-            aria-label="Profile"
-          >
-            <UserCircle2 className="size-7 text-primary" />
-          </button>
+
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-auto gap-2 rounded-full border-border bg-card px-2 py-1"
+                aria-label="Open account menu"
+              >
+                <UserCircle2 className="size-7 shrink-0 text-primary" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs text-muted-foreground">Signed in as</p>
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {ownerDisplayName ?? "Loading…"}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                disabled={logoutPending}
+                onSelect={() => void handleSignOut()}
+              >
+                <LogOut className="size-4" />
+                {logoutPending ? "Signing out…" : "Log out"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

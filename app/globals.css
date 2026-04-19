@@ -139,5 +139,7 @@
   }
   html {
     @apply font-sans;
+    /* Keeps scrollbar gutter when Radix overlays toggle overflow; avoids horizontal layout shift */
+    scrollbar-gutter: stable;
   }
 }
