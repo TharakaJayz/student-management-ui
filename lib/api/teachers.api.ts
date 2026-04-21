@@ -35,13 +35,11 @@ function normalizeTeacherRelation(raw: unknown): DbRow<Teacher> {
 /**
  * 4) Get all teachers by institute_id (via teacher_institute_assignments)
  */
-export async function getAllTeachers(instituteId: string): Promise<Teacher[]> {
-  const supabase = getSupabaseBrowserClient()
-  const { data, error } = await supabase
-    .from("teacher_institute_assignments")
-    .select(
-      `
-      teacher:teachers (
+export async function getAllTeachers(): Promise<Teacher[]> {
+    const supabase = getSupabaseBrowserClient()
+    const { data, error } = await supabase
+      .from("teachers")
+      .select(`
         id,
         name,
         mobile,
@@ -49,20 +47,14 @@ export async function getAllTeachers(instituteId: string): Promise<Teacher[]> {
         is_active,
         created_at,
         updated_at
-      )
-    `
-    )
-    .eq("institute_id", instituteId)
-    .eq("is_active", true)
-
-  if (error) throw error
-  if (!data?.length) return []
-
-  return data.map((row) => {
-    const t = normalizeTeacherRelation((row as { teacher: unknown }).teacher)
-    return mapTeacherRow(t)
-  })
-}
+      `)
+      .eq("is_active", true)
+  
+    if (error) throw error
+    if (!data?.length) return []
+  
+    return data.map((row) => mapTeacherRow(row as DbRow<Teacher>))
+  }
 
 export async function getAllTeachersByInstituteId(instituteId: string): Promise<Teacher[]> {
     const supabase = getSupabaseBrowserClient()
@@ -186,3 +178,45 @@ type CreateTeacherInstituteAssignmentPayload = {
     )
   }
 
+
+  type DeleteTeacherInstituteAssignmentPayload = {
+    teacherId: string
+    instituteId: string
+  }
+  export async function deleteTeacherInstituteAssignment(
+    payload: DeleteTeacherInstituteAssignmentPayload,
+  ): Promise<Teacher_institute_assignments> {
+    const supabase = getSupabaseBrowserClient()
+    const { data, error } = await supabase.functions.invoke("delete-teacher-institute-assignment", {
+      body: payload,
+    })
+    if (error) throw error
+    if (!data?.teacherInstituteAssignment) {
+      throw new Error("delete-teacher-institute-assignment returned no teacherInstituteAssignment")
+    }
+    return mapTeacherInstituteAssignmentRow(
+      data.teacherInstituteAssignment as DbRow<Teacher_institute_assignments>,
+    )
+  }
+  
+
+  export async function getAllTeacherInstituteAssignmentsByInstituteId(
+    instituteId: string,
+  ): Promise<Teacher_institute_assignments[]> {
+    const supabase = getSupabaseBrowserClient()
+    const { data, error } = await supabase
+      .from("teacher_institute_assignments")
+      .select(`
+        teacher_id,
+        institute_id,
+        is_active,
+        created_at,
+        updated_at
+      `)
+      .eq("institute_id", instituteId)
+    if (error) throw error
+    if (!data?.length) return []
+    return data.map((row) =>
+      mapTeacherInstituteAssignmentRow(row as DbRow<Teacher_institute_assignments>),
+    )
+  }

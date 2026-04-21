@@ -74,13 +74,30 @@ export interface SubjectOption {
 export interface TeachersViewProps {
   teachers: Teacher[]
   subjects: SubjectOption[]
-  onSubmitTeacher: (payload: TeacherMutationPayload) => void
+  onSubmitTeacher: (payload: TeacherMutationPayload) => void | Promise<void>
+  assignedTeacherIds: string[]
+  onAssignTeacher: (teacher: Teacher) => void | Promise<void>
+  onUnassignTeacher: (teacher: Teacher) => void | Promise<void>
+  assignmentPendingTeacherId?: string | null
 }
 
-const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps) => {
+const TeachersView = ({
+  teachers,
+  subjects,
+  onSubmitTeacher,
+  assignedTeacherIds,
+  onAssignTeacher,
+  onUnassignTeacher,
+  assignmentPendingTeacherId = null,
+}: TeachersViewProps) => {
   const [searchValue, setSearchValue] = React.useState("")
+  const [assignmentFilter, setAssignmentFilter] = React.useState<
+    "all" | "assigned" | "unassigned"
+  >("all")
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [editingTeacher, setEditingTeacher] = React.useState<Teacher | null>(null)
+  const [assignTarget, setAssignTarget] = React.useState<Teacher | null>(null)
+  const [unassignTarget, setUnassignTarget] = React.useState<Teacher | null>(null)
 
   const subjectNameById = React.useMemo(
     () => new Map(subjects.map((subject) => [subject.id, subject.name])),
@@ -102,19 +119,32 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
     [teachers]
   )
 
+  const assignedTeacherIdSet = React.useMemo(
+    () => new Set(assignedTeacherIds),
+    [assignedTeacherIds]
+  )
+
   const filteredTeachers = React.useMemo(() => {
     const normalizedSearch = searchValue.toLowerCase().trim()
-    if (!normalizedSearch) return teachers
+    const bySearch = !normalizedSearch
+      ? teachers
+      : teachers.filter(
+          (teacher) =>
+            teacher.name.toLowerCase().includes(normalizedSearch) ||
+            teacher.mobile.toLowerCase().includes(normalizedSearch) ||
+            (subjectNameById.get(teacher.subject_id) ?? "")
+              .toLowerCase()
+              .includes(normalizedSearch)
+        )
 
-    return teachers.filter(
-      (teacher) =>
-        teacher.name.toLowerCase().includes(normalizedSearch) ||
-        teacher.mobile.toLowerCase().includes(normalizedSearch) ||
-        (subjectNameById.get(teacher.subject_id) ?? "")
-          .toLowerCase()
-          .includes(normalizedSearch)
-    )
-  }, [teachers, searchValue, subjectNameById])
+    if (assignmentFilter === "all") {
+      return bySearch
+    }
+    if (assignmentFilter === "assigned") {
+      return bySearch.filter((teacher) => assignedTeacherIdSet.has(teacher.id))
+    }
+    return bySearch.filter((teacher) => !assignedTeacherIdSet.has(teacher.id))
+  }, [teachers, searchValue, subjectNameById, assignmentFilter, assignedTeacherIdSet])
 
   const openCreateDialog = () => {
     setEditingTeacher(null)
@@ -141,16 +171,28 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
     [form]
   )
 
-  const onSubmit = (data: TeacherFormValues) => {
+  const onSubmit = async (data: TeacherFormValues) => {
     if (editingTeacher) {
-      onSubmitTeacher({ mode: "update", id: editingTeacher.id, data })
+      await onSubmitTeacher({ mode: "update", id: editingTeacher.id, data })
     } else {
-      onSubmitTeacher({ mode: "create", data })
+      await onSubmitTeacher({ mode: "create", data })
     }
 
     setIsDialogOpen(false)
     setEditingTeacher(null)
     form.reset()
+  }
+
+  const handleConfirmAssign = async () => {
+    if (!assignTarget) return
+    await onAssignTeacher(assignTarget)
+    setAssignTarget(null)
+  }
+
+  const handleConfirmUnassign = async () => {
+    if (!unassignTarget) return
+    await onUnassignTeacher(unassignTarget)
+    setUnassignTarget(null)
   }
 
   const columns: ColumnDef<Teacher>[] = [
@@ -175,16 +217,32 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          type="button"
-          onClick={() => openEditDialog(row.original)}
-        >
-          Edit
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const teacher = row.original
+        const isAssigned = assignedTeacherIdSet.has(teacher.id)
+        const isPending = assignmentPendingTeacherId === teacher.id
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => openEditDialog(teacher)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant={isAssigned ? "outline" : "default"}
+              size="sm"
+              type="button"
+              disabled={isPending}
+              onClick={() => (isAssigned ? setUnassignTarget(teacher) : setAssignTarget(teacher))}
+            >
+              {isPending ? "Saving..." : isAssigned ? "Unassign" : "Assign"}
+            </Button>
+          </div>
+        )
+      },
     },
   ]
 
@@ -202,7 +260,7 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
 
   React.useEffect(() => {
     table.setPageIndex(0)
-  }, [searchValue, table])
+  }, [searchValue, assignmentFilter, table])
 
   return (
     <div className="space-y-6 px-1 py-2">
@@ -227,14 +285,31 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
 
       <Card className="py-0">
         <CardHeader className="flex flex-col gap-3 border-b py-4 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-sm">
-            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search teachers by name or mobile..."
-              className="pl-9"
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-            />
+          <div className="flex w-full flex-col gap-3 md:max-w-xl md:flex-row">
+            <div className="relative w-full">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search teachers by name or mobile..."
+                className="pl-9"
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+              />
+            </div>
+            <Select
+              value={assignmentFilter}
+              onValueChange={(value: "all" | "assigned" | "unassigned") =>
+                setAssignmentFilter(value)
+              }
+            >
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Assignment filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All teachers</SelectItem>
+                <SelectItem value="assigned">Assigned</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Button type="button" onClick={openCreateDialog}>
             Create Teacher
@@ -412,6 +487,86 @@ const TeachersView = ({ teachers, subjects, onSubmitTeacher }: TeachersViewProps
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(assignTarget)} onOpenChange={(open) => !open && setAssignTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign teacher</DialogTitle>
+            <DialogDescription>
+              Assign this teacher to the current institute?
+            </DialogDescription>
+          </DialogHeader>
+          {assignTarget ? (
+            <div className="space-y-2 text-sm">
+              <p>
+                <span className="text-muted-foreground">Teacher:</span> {assignTarget.name}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Mobile:</span> {assignTarget.mobile}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Subject:</span>{" "}
+                {subjectNameById.get(assignTarget.subject_id) ?? "Unknown Subject"}
+              </p>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAssignTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={assignmentPendingTeacherId === assignTarget?.id}
+              onClick={() => void handleConfirmAssign()}
+            >
+              {assignmentPendingTeacherId === assignTarget?.id ? "Assigning..." : "Confirm Assign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(unassignTarget)}
+        onOpenChange={(open) => !open && setUnassignTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unassign teacher</DialogTitle>
+            <DialogDescription>
+              This removes the teacher from this institute assignment.
+            </DialogDescription>
+          </DialogHeader>
+          {unassignTarget ? (
+            <div className="space-y-2 text-sm">
+              <p>
+                <span className="text-muted-foreground">Teacher:</span> {unassignTarget.name}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Mobile:</span> {unassignTarget.mobile}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Subject:</span>{" "}
+                {subjectNameById.get(unassignTarget.subject_id) ?? "Unknown Subject"}
+              </p>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setUnassignTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={assignmentPendingTeacherId === unassignTarget?.id}
+              onClick={() => void handleConfirmUnassign()}
+            >
+              {assignmentPendingTeacherId === unassignTarget?.id
+                ? "Unassigning..."
+                : "Confirm Unassign"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

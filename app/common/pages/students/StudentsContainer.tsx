@@ -3,196 +3,172 @@
 import React from "react"
 
 import type { Student } from "@/app/types/students"
+import { getInstituteByOwnerId } from "@/lib/api/institute-settings.api"
+import { createStudent, getAllStudents, updateStudent } from "@/lib/api/students.api"
+import {
+  createStudentInstituteEnrollment,
+  deleteStudentInstituteEnrollment,
+  getAllStudentInstituteEnrollmentsByInstituteId,
+} from "@/lib/api/students.api"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 import StudentView, {
-  type StudentFormValues,
   type StudentMutationPayload,
 } from "./StudentView"
-import { getAllStudents } from "@/lib/api/students.api"
-
-const initialStudents: Student[] = [
-  {
-    id: "std-1",
-    name: "Amara Silva",
-    age: 10,
-    image_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
-    grade: "Grade 5",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-2",
-    name: "Kavindu Perera",
-    age: 12,
-    image_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
-    grade: "Grade 7",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-3",
-    name: "Nethmi Fernando",
-    age: 15,
-    image_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
-    grade: "Grade 10",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-4",
-    name: "Rivinu Wickramasinghe",
-    age: 14,
-    image_url: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde",
-    grade: "Grade 9",
-    is_active: false,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-5",
-    name: "Dulani Jayawardena",
-    age: 11,
-    image_url: "https://images.unsplash.com/photo-1541534401786-2077eed87a72",
-    grade: "Grade 6",
-    is_active: true,
-        created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-6",
-    name: "Sahan Weerasinghe",
-    age: 13,
-    image_url: "https://images.unsplash.com/photo-1521119989659-a83eee488004",
-    grade: "Grade 8",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-7",
-    name: "Yenuli Rathnayake",
-    age: 9,
-    image_url: "https://images.unsplash.com/photo-1525134479668-1bee5c7c6845",
-    grade: "Grade 4",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-8",
-    name: "Nipun Karunaratne",
-    age: 16,
-    image_url: "https://images.unsplash.com/photo-1504593811423-6dd665756598",
-    grade: "Grade 11",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-9",
-    name: "Piumi De Silva",
-    age: 14,
-    image_url: "https://images.unsplash.com/photo-1546961329-78bef0414d7c",
-    grade: "Grade 9",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-10",
-    name: "Thivinu Abeysekera",
-    age: 12,
-    image_url: "https://images.unsplash.com/photo-1552058544-f2b08422138a",
-    grade: "Grade 7",
-    is_active: false,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-11",
-    name: "Amani Senanayake",
-    age: 17,
-    image_url: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91",
-    grade: "Grade 12",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "std-12",
-    name: "Vihanga Rajapaksha",
-    age: 8,
-    image_url: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef",
-    grade: "Grade 3",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-]
-
-const parseFormToStudent = (
-  payload: StudentFormValues
-): Omit<Student, "id" | "created_at" | "updated_at"> => ({
-  name: payload.name,
-  age: payload.age,
-  image_url: payload.image_url,
-  grade: payload.grade,
-  is_active: payload.is_active === "true",
-})
 
 const StudentsContainer = () => {
+  const [students, setStudents] = React.useState<Student[]>([])
+  const [instituteId, setInstituteId] = React.useState<string | null>(null)
+  const [assignedStudentIds, setAssignedStudentIds] = React.useState<string[]>([])
+  const [assignmentPendingStudentId, setAssignmentPendingStudentId] = React.useState<
+    string | null
+  >(null)
 
-  React.useEffect(()=>{
-    (async()=>{
+  React.useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
       try {
-      const result = await getAllStudents("1ba78024-33fd-4f63-a3a6-1117c3c5ae30");
-      console.log("result",result)
+        const allStudents = await getAllStudents()
+        if (!cancelled) {
+          setStudents(allStudents)
+        }
       } catch (error) {
-        console.log("error",error)
+        console.error("Failed to load students", error)
+        if (!cancelled) {
+          setStudents([])
+        }
       }
-        
-    })();
-    
-  },[])
-  const [students, setStudents] = React.useState<Student[]>(initialStudents)
+    })()
 
-  const handleSubmitStudent = (payload: StudentMutationPayload) => {
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await getSupabaseBrowserClient().auth.getUser()
+        if (!user || cancelled) return
+
+        const institute = await getInstituteByOwnerId(user.id)
+        if (cancelled) return
+        if (!institute) {
+          setInstituteId(null)
+          setAssignedStudentIds([])
+          return
+        }
+
+        setInstituteId(institute.id)
+        const enrollments = await getAllStudentInstituteEnrollmentsByInstituteId(institute.id)
+        if (!cancelled) {
+          setAssignedStudentIds(
+            enrollments.filter((enrollment) => enrollment.is_active).map((row) => row.student_id)
+          )
+        }
+      } catch (error) {
+        console.error("Failed to load student assignments", error)
+        if (!cancelled) {
+          setAssignedStudentIds([])
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleSubmitStudent = async (payload: StudentMutationPayload) => {
     if (payload.mode === "create") {
-      const parsedStudent = parseFormToStudent(payload.data)
-
-      setStudents((previous) => [
-        ...previous,
-        {
-          id: `std-${crypto.randomUUID()}`,
-          ...parsedStudent,
-          created_at: new Date(),
-          updated_at: new Date(),
-        },
-      ])
+      const createdStudent = await createStudent({
+        name: payload.data.name,
+        age: payload.data.age,
+        grade: payload.data.grade,
+        imageUrl: payload.data.image_url || undefined,
+      })
+      setStudents((previous) => [...previous, createdStudent])
+      toast.success("Student created successfully")
       return
     }
 
+    const updatedStudent = await updateStudent({
+      studentId: payload.id,
+      name: payload.data.name,
+      age: payload.data.age,
+      grade: payload.data.grade,
+      imageUrl: payload.data.image_url || undefined,
+    })
     setStudents((previous) =>
-      previous.map((student) => {
-        if (student.id !== payload.id) {
-          return student
-        }
-
-        return {
-          ...student,
-          ...parseFormToStudent(payload.data),
-          updated_at: new Date(),
-        }
-      })
+      previous.map((student) => (student.id === payload.id ? updatedStudent : student))
     )
+    toast.success("Student updated successfully")
+  }
+
+  const handleAssignStudent = async (student: Student) => {
+    if (!instituteId) {
+      toast.error("Institute is required to assign students")
+      return
+    }
+
+    setAssignmentPendingStudentId(student.id)
+    try {
+      await createStudentInstituteEnrollment({
+        studentId: student.id,
+        instituteId,
+      })
+      setAssignedStudentIds((previous) =>
+        previous.includes(student.id) ? previous : [...previous, student.id]
+      )
+      toast.success(`${student.name} assigned to institute`)
+    } catch (error) {
+      console.error("Failed to assign student", error)
+      toast.error("Could not assign student")
+      throw error
+    } finally {
+      setAssignmentPendingStudentId(null)
+    }
+  }
+
+  const handleUnassignStudent = async (student: Student) => {
+    if (!instituteId) {
+      toast.error("Institute is required to unassign students")
+      return
+    }
+
+    setAssignmentPendingStudentId(student.id)
+    try {
+      await deleteStudentInstituteEnrollment({
+        studentId: student.id,
+        instituteId,
+      })
+      setAssignedStudentIds((previous) => previous.filter((id) => id !== student.id))
+      toast.success(`${student.name} unassigned from institute`)
+    } catch (error) {
+      console.error("Failed to unassign student", error)
+      toast.error("Could not unassign student")
+      throw error
+    } finally {
+      setAssignmentPendingStudentId(null)
+    }
   }
 
   return (
     <div>
-      <StudentView students={students} onSubmitStudent={handleSubmitStudent} />
+      <StudentView
+        students={students}
+        onSubmitStudent={handleSubmitStudent}
+        assignedStudentIds={assignedStudentIds}
+        onAssignStudent={handleAssignStudent}
+        onUnassignStudent={handleUnassignStudent}
+        assignmentPendingStudentId={assignmentPendingStudentId}
+      />
     </div>
   )
 }

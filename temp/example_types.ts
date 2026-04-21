@@ -120,18 +120,18 @@ interface Teacher_class_monthly_payments {
     updatedAt: Date;
 }
 
-interface Student_institute_enrollments {
-  studentId: string;
-  instituteId: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// interface Student_institute_enrollments {
+//   studentId: string;
+//   instituteId: string;
+//   isActive: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }
 
-interface Teacher_institute_assignments {
-  teacherId: string;
-  instituteId: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// interface Teacher_institute_assignments {
+//   teacherId: string;
+//   instituteId: string;
+//   isActive: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }

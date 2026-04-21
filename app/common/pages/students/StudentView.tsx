@@ -66,7 +66,11 @@ export type StudentMutationPayload =
 
 export interface StudentViewProps {
   students: Student[]
-  onSubmitStudent: (payload: StudentMutationPayload) => void
+  onSubmitStudent: (payload: StudentMutationPayload) => void | Promise<void>
+  assignedStudentIds: string[]
+  onAssignStudent: (student: Student) => void | Promise<void>
+  onUnassignStudent: (student: Student) => void | Promise<void>
+  assignmentPendingStudentId?: string | null
 }
 
 const getGradeNumber = (grade: string) => {
@@ -74,11 +78,24 @@ const getGradeNumber = (grade: string) => {
   return match ? Number(match[0]) : Number.NaN
 }
 
-const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
+const StudentView = ({
+  students,
+  onSubmitStudent,
+  assignedStudentIds,
+  onAssignStudent,
+  onUnassignStudent,
+  assignmentPendingStudentId = null,
+}: StudentViewProps) => {
   const [searchValue, setSearchValue] = React.useState("")
   const [gradeFilter, setGradeFilter] = React.useState("all")
+  const [assignmentFilter, setAssignmentFilter] = React.useState<
+    "all" | "assigned" | "unassigned"
+  >("all")
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [isStudentSaving, setIsStudentSaving] = React.useState(false)
   const [editingStudent, setEditingStudent] = React.useState<Student | null>(null)
+  const [assignTarget, setAssignTarget] = React.useState<Student | null>(null)
+  const [unassignTarget, setUnassignTarget] = React.useState<Student | null>(null)
 
   const form = useForm<StudentFormInput, unknown, StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -94,6 +111,10 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
   const activeStudents = React.useMemo(
     () => students.filter((student) => student.is_active),
     [students]
+  )
+  const assignedStudentIdSet = React.useMemo(
+    () => new Set(assignedStudentIds),
+    [assignedStudentIds]
   )
 
   const gradeSummary = React.useMemo(() => {
@@ -128,6 +149,12 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
       const matchesGrade = gradeFilter === "all" || student.grade === gradeFilter
       if (!matchesGrade) return false
 
+      const matchesAssignment =
+        assignmentFilter === "all" ||
+        (assignmentFilter === "assigned" && assignedStudentIdSet.has(student.id)) ||
+        (assignmentFilter === "unassigned" && !assignedStudentIdSet.has(student.id))
+      if (!matchesAssignment) return false
+
       if (!normalizedSearch) return true
 
       return (
@@ -135,7 +162,7 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
         student.grade.toLowerCase().includes(normalizedSearch)
       )
     })
-  }, [students, searchValue, gradeFilter])
+  }, [students, searchValue, gradeFilter, assignmentFilter, assignedStudentIdSet])
 
   const openCreateDialog = () => {
     setEditingStudent(null)
@@ -161,16 +188,33 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
     setIsDialogOpen(true)
   }, [form])
 
-  const onSubmit = (data: StudentFormValues) => {
-    if (editingStudent) {
-      onSubmitStudent({ mode: "update", id: editingStudent.id, data })
-    } else {
-      onSubmitStudent({ mode: "create", data })
-    }
+  const onSubmit = async (data: StudentFormValues) => {
+    setIsStudentSaving(true)
+    try {
+      if (editingStudent) {
+        await onSubmitStudent({ mode: "update", id: editingStudent.id, data })
+      } else {
+        await onSubmitStudent({ mode: "create", data })
+      }
 
-    setIsDialogOpen(false)
-    setEditingStudent(null)
-    form.reset()
+      setIsDialogOpen(false)
+      setEditingStudent(null)
+      form.reset()
+    } finally {
+      setIsStudentSaving(false)
+    }
+  }
+
+  const handleConfirmAssign = async () => {
+    if (!assignTarget) return
+    await onAssignStudent(assignTarget)
+    setAssignTarget(null)
+  }
+
+  const handleConfirmUnassign = async () => {
+    if (!unassignTarget) return
+    await onUnassignStudent(unassignTarget)
+    setUnassignTarget(null)
   }
 
   const columns: ColumnDef<Student>[] = [
@@ -194,16 +238,32 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          type="button"
-          onClick={() => openEditDialog(row.original)}
-        >
-          Edit
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const student = row.original
+        const isAssigned = assignedStudentIdSet.has(student.id)
+        const isPending = assignmentPendingStudentId === student.id
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => openEditDialog(student)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant={isAssigned ? "outline" : "default"}
+              size="sm"
+              type="button"
+              disabled={isPending}
+              onClick={() => (isAssigned ? setUnassignTarget(student) : setAssignTarget(student))}
+            >
+              {isPending ? "Saving..." : isAssigned ? "Unassign" : "Assign"}
+            </Button>
+          </div>
+        )
+      },
     },
   ]
 
@@ -221,7 +281,7 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
 
   React.useEffect(() => {
     table.setPageIndex(0)
-  }, [searchValue, gradeFilter, table])
+  }, [searchValue, gradeFilter, assignmentFilter, table])
 
   return (
     <div className="space-y-6 px-1 py-2">
@@ -289,6 +349,21 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
                     {grade}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={assignmentFilter}
+              onValueChange={(value: "all" | "assigned" | "unassigned") =>
+                setAssignmentFilter(value)
+              }
+            >
+              <SelectTrigger className="w-full md:w-52">
+                <SelectValue placeholder="Filter by assignment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All students</SelectItem>
+                <SelectItem value="assigned">Assigned</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -366,6 +441,7 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
       <Dialog
         open={isDialogOpen}
         onOpenChange={(open) => {
+          if (!open && isStudentSaving) return
           setIsDialogOpen(open)
           if (!open) {
             setEditingStudent(null)
@@ -471,13 +547,104 @@ const StudentView = ({ students, onSubmitStudent }: StudentViewProps) => {
               />
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isStudentSaving}
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">{editingStudent ? "Update Student" : "Create Student"}</Button>
+                <Button type="submit" disabled={isStudentSaving}>
+                  {editingStudent
+                    ? isStudentSaving
+                      ? "Updating..."
+                      : "Update Student"
+                    : isStudentSaving
+                      ? "Creating..."
+                      : "Create Student"}
+                </Button>
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(assignTarget)} onOpenChange={(open) => !open && setAssignTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign student</DialogTitle>
+            <DialogDescription>
+              Assign this student to the current institute?
+            </DialogDescription>
+          </DialogHeader>
+          {assignTarget ? (
+            <div className="space-y-2 text-sm">
+              <p>
+                <span className="text-muted-foreground">Student:</span> {assignTarget.name}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Age:</span> {assignTarget.age}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Grade:</span> {assignTarget.grade}
+              </p>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAssignTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={assignmentPendingStudentId === assignTarget?.id}
+              onClick={() => void handleConfirmAssign()}
+            >
+              {assignmentPendingStudentId === assignTarget?.id ? "Assigning..." : "Confirm Assign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(unassignTarget)}
+        onOpenChange={(open) => !open && setUnassignTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unassign student</DialogTitle>
+            <DialogDescription>
+              This removes the student from this institute assignment.
+            </DialogDescription>
+          </DialogHeader>
+          {unassignTarget ? (
+            <div className="space-y-2 text-sm">
+              <p>
+                <span className="text-muted-foreground">Student:</span> {unassignTarget.name}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Age:</span> {unassignTarget.age}
+              </p>
+              <p>
+                <span className="text-muted-foreground">Grade:</span> {unassignTarget.grade}
+              </p>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setUnassignTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={assignmentPendingStudentId === unassignTarget?.id}
+              onClick={() => void handleConfirmUnassign()}
+            >
+              {assignmentPendingStudentId === unassignTarget?.id
+                ? "Unassigning..."
+                : "Confirm Unassign"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
