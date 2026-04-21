@@ -3,163 +3,109 @@
 import React from "react"
 
 import type { Teacher } from "@/app/types/teacher"
+import {
+  getAllSubjects,
+  getInstituteByOwnerId,
+} from "@/lib/api/institute-settings.api"
+import {
+  createTeacher,
+  getAllTeachers,
+  updateTeacher,
+} from "@/lib/api/teachers.api"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 import TeachersView, {
   type SubjectOption,
-  type TeacherFormValues,
   type TeacherMutationPayload,
 } from "./TeachersView"
 
-const subjects: SubjectOption[] = [
-  { id: "sub-1", name: "Mathematics" },
-  { id: "sub-2", name: "Science" },
-  { id: "sub-3", name: "English" },
-  { id: "sub-4", name: "History" },
-  { id: "sub-5", name: "ICT" },
-]
-
-const initialTeachers: Teacher[] = [
-  {
-    id: "tch-1",
-    name: "Kasun Jayasuriya",
-    mobile: "+94771230001",
-    subject_id: "sub-1",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-2",
-    name: "Nadeesha Perera",
-    mobile: "+94771230002",
-    subject_id: "sub-2",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-3",
-    name: "Dineth Fernando",
-    mobile: "+94771230003",
-    subject_id: "sub-3",
-    is_active: false,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-4",
-    name: "Iresha Silva",
-    mobile: "+94771230004",
-    subject_id: "sub-4",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-5",
-    name: "Ravindu Wickramasinghe",
-    mobile: "+94771230005",
-    subject_id: "sub-5",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-6",
-    name: "Upeksha Abeykoon",
-    mobile: "+94771230006",
-    subject_id: "sub-1",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-7",
-    name: "Shanika Madushan",
-    mobile: "+94771230007",
-    subject_id: "sub-2",
-    is_active: false,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-8",
-    name: "Gihani Senanayake",
-    mobile: "+94771230008",
-    subject_id: "sub-3",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-9",
-    name: "Chamod Rajapaksha",
-    mobile: "+94771230009",
-    subject_id: "sub-4",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-10",
-    name: "Tharushi De Zoysa",
-    mobile: "+94771230010",
-    subject_id: "sub-5",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "tch-11",
-    name: "Mihiran Ranasinghe",
-    mobile: "+94771230011",
-    subject_id: "sub-1",
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-]
-
-const parseFormToTeacher = (
-  payload: TeacherFormValues
-): Omit<Teacher, "id" | "created_at" | "updated_at"> => ({
-  name: payload.name,
-  mobile: payload.mobile,
-  subject_id: payload.subject_id,
-  is_active: payload.is_active === "true",
-})
-
 const TeachersContainer = () => {
-  const [teachers, setTeachers] = React.useState<Teacher[]>(initialTeachers)
+  const [teachers, setTeachers] = React.useState<Teacher[]>([])
+  const [subjects, setSubjects] = React.useState<SubjectOption[]>([])
+  const [instituteId, setInstituteId] = React.useState<string | null>(null)
 
-  const handleSubmitTeacher = (payload: TeacherMutationPayload) => {
-    if (payload.mode === "create") {
-      const parsedTeacher = parseFormToTeacher(payload.data)
+  React.useEffect(() => {
+    let cancelled = false
 
-      setTeachers((previous) => [
-        ...previous,
-        {
-          id: `tch-${crypto.randomUUID()}`,
-          ...parsedTeacher,
-          created_at: new Date(),
-          updated_at: new Date(),
-        },
-      ])
+    void (async () => {
+      try {
+        const allSubjects = await getAllSubjects()
+        if (cancelled) return
+
+        setSubjects(allSubjects.map((subject) => ({ id: subject.id, name: subject.name })))
+      } catch (error) {
+        console.error("Failed to load subjects for teachers form", error)
+        if (!cancelled) {
+          setSubjects([])
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await getSupabaseBrowserClient().auth.getUser()
+        if (!user || cancelled) return
+
+        const institute = await getInstituteByOwnerId(user.id)
+        if (cancelled) return
+        if (!institute) {
+          setInstituteId(null)
+          setTeachers([])
+          return
+        }
+
+        setInstituteId(institute.id)
+        const allTeachers = await getAllTeachers(institute.id)
+        if (!cancelled) {
+          setTeachers(allTeachers)
+        }
+      } catch (error) {
+        console.error("Failed to load teachers", error)
+        if (!cancelled) {
+          setTeachers([])
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleSubmitTeacher = async (payload: TeacherMutationPayload) => {
+    if (!instituteId) {
+      console.warn("Cannot create/update teacher without institute id")
       return
     }
 
-    setTeachers((previous) =>
-      previous.map((teacher) => {
-        if (teacher.id !== payload.id) {
-          return teacher
-        }
-
-        return {
-          ...teacher,
-          ...parseFormToTeacher(payload.data),
-          updated_at: new Date(),
-        }
+    if (payload.mode === "create") {
+      const createdTeacher = await createTeacher({
+        name: payload.data.name,
+        mobile: payload.data.mobile,
+        subjectId: payload.data.subject_id,
       })
+      setTeachers((previous) => [...previous, createdTeacher])
+      return
+    }
+
+    const updatedTeacher = await updateTeacher({
+      teacherId: payload.id,
+      name: payload.data.name,
+      mobile: payload.data.mobile,
+      subjectId: payload.data.subject_id,
+    })
+    setTeachers((previous) =>
+      previous.map((teacher) => (teacher.id === payload.id ? updatedTeacher : teacher))
     )
   }
 
