@@ -11,10 +11,18 @@ import {
 } from "@tanstack/react-table"
 import { Search } from "lucide-react"
 import { useForm } from "react-hook-form"
+import { toast } from "sonner"
 import { z } from "zod"
 
 import type { Class } from "@/app/types/class"
+import type { Student } from "@/app/types/students"
 import { Days } from "@/app/types/common"
+import {
+  createStudentClasses,
+  deleteStudentClasses,
+  getAllStudentClassesByClassId,
+} from "@/lib/api/class.api"
+import { getAllStudentsByGrade } from "@/lib/api/students.api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -120,6 +128,14 @@ const ClassesView = ({
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [isClassSaving, setIsClassSaving] = React.useState(false)
   const [editingClass, setEditingClass] = React.useState<Class | null>(null)
+  const [isConfigDialogOpen, setIsConfigDialogOpen] = React.useState(false)
+  const [configClass, setConfigClass] = React.useState<Class | null>(null)
+  const [studentsByGrade, setStudentsByGrade] = React.useState<Student[]>([])
+  const [selectedStudentIds, setSelectedStudentIds] = React.useState<Set<string>>(new Set())
+  const [initialStudentIds, setInitialStudentIds] = React.useState<Set<string>>(new Set())
+  const [studentsSearchValue, setStudentsSearchValue] = React.useState("")
+  const [isConfigLoading, setIsConfigLoading] = React.useState(false)
+  const [isConfigSaving, setIsConfigSaving] = React.useState(false)
 
   const classRoomNameById = React.useMemo(
     () => new Map(classRoomOptions.map((option) => [option.id, option.name])),
@@ -233,6 +249,81 @@ const ClassesView = ({
     }
   }
 
+  const openConfigDialog = React.useCallback(async (item: Class) => {
+    setConfigClass(item)
+    setIsConfigDialogOpen(true)
+    setStudentsSearchValue("")
+    setIsConfigLoading(true)
+    try {
+      const [gradeStudents, assignedStudents] = await Promise.all([
+        getAllStudentsByGrade(item.grade),
+        getAllStudentClassesByClassId(item.id),
+      ])
+      const activeAssignedIds = new Set(assignedStudents.map((row) => row.student_id))
+      setStudentsByGrade(gradeStudents)
+      setInitialStudentIds(activeAssignedIds)
+      setSelectedStudentIds(new Set(activeAssignedIds))
+    } catch (error) {
+      console.error("Failed to load class student configuration", error)
+      toast.error("Could not load students for this class")
+    } finally {
+      setIsConfigLoading(false)
+    }
+  }, [])
+
+  const filteredStudents = React.useMemo(() => {
+    const normalizedSearch = studentsSearchValue.toLowerCase().trim()
+    if (!normalizedSearch) return studentsByGrade
+
+    return studentsByGrade.filter((student) => student.name.toLowerCase().includes(normalizedSearch))
+  }, [studentsByGrade, studentsSearchValue])
+
+  const toggleStudentSelection = (studentId: string) => {
+    setSelectedStudentIds((previous) => {
+      const next = new Set(previous)
+      if (next.has(studentId)) {
+        next.delete(studentId)
+      } else {
+        next.add(studentId)
+      }
+      return next
+    })
+  }
+
+  const handleSaveConfiguredStudents = async () => {
+    if (!configClass) return
+
+    const toAssign = Array.from(selectedStudentIds).filter((studentId) => !initialStudentIds.has(studentId))
+    const toUnassign = Array.from(initialStudentIds).filter((studentId) => !selectedStudentIds.has(studentId))
+
+    setIsConfigSaving(true)
+    try {
+      await Promise.all([
+        toAssign.length
+          ? createStudentClasses(toAssign.map((studentId) => ({ studentId, classId: configClass.id })))
+          : Promise.resolve([]),
+        toUnassign.length
+          ? deleteStudentClasses(toUnassign.map((studentId) => ({ studentId, classId: configClass.id })))
+          : Promise.resolve([]),
+      ])
+      setInitialStudentIds(new Set(selectedStudentIds))
+      toast.success("Class student configuration saved")
+    } catch (error) {
+      console.error("Failed to save class student configuration", error)
+      toast.error("Could not save class student configuration")
+    } finally {
+      setIsConfigSaving(false)
+    }
+  }
+
+  const hasConfigChanges = React.useMemo(() => {
+    if (selectedStudentIds.size !== initialStudentIds.size) return true
+    for (const studentId of selectedStudentIds) {
+      if (!initialStudentIds.has(studentId)) return true
+    }
+    return false
+  }, [initialStudentIds, selectedStudentIds])
+
   const columns: ColumnDef<Class>[] = [
     {
       accessorKey: "name",
@@ -265,9 +356,14 @@ const ClassesView = ({
       id: "actions",
       header: "Actions",
       cell: ({ row }) => (
-        <Button type="button" variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
-          Edit
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
+            Edit
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void openConfigDialog(row.original)}>
+            Config
+          </Button>
+        </div>
       ),
     },
   ]
@@ -398,6 +494,109 @@ const ClassesView = ({
           </Button>
         </div>
       </div>
+
+      <Dialog
+        open={isConfigDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && (isConfigLoading || isConfigSaving)) return
+          setIsConfigDialogOpen(open)
+          if (!open) {
+            setConfigClass(null)
+            setStudentsByGrade([])
+            setSelectedStudentIds(new Set())
+            setInitialStudentIds(new Set())
+            setStudentsSearchValue("")
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Configure Students</DialogTitle>
+            <DialogDescription>
+              {configClass
+                ? `Manage student assignments for ${configClass.name} (${configClass.grade}).`
+                : "Manage student assignments for the selected class."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={studentsSearchValue}
+                onChange={(event) => setStudentsSearchValue(event.target.value)}
+                placeholder="Search students by name..."
+                className="pl-9"
+                disabled={isConfigLoading || isConfigSaving}
+              />
+            </div>
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20">Select</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Grade</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isConfigLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-20 text-center text-muted-foreground">
+                        Loading students...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredStudents.length ? (
+                    filteredStudents.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 cursor-pointer rounded border"
+                            checked={selectedStudentIds.has(student.id)}
+                            onChange={() => toggleStudentSelection(student.id)}
+                            disabled={isConfigSaving}
+                          />
+                        </TableCell>
+                        <TableCell>{student.name}</TableCell>
+                        <TableCell>{student.grade}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-20 text-center text-muted-foreground">
+                        No students found for this class grade.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Selected {selectedStudentIds.size} of {studentsByGrade.length} students
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfigDialogOpen(false)}
+              disabled={isConfigLoading || isConfigSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSaveConfiguredStudents()}
+              disabled={isConfigLoading || isConfigSaving || !hasConfigChanges}
+            >
+              {isConfigSaving ? "Saving..." : "Save Configuration"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={isDialogOpen}

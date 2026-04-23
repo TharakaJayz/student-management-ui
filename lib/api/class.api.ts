@@ -192,16 +192,40 @@ export type CreateStudentClassPayload = {
    * body: { studentId, classId }
    * returns: { studentClass }
    */
-  export async function deleteStudentClass(
-    payload: DeleteStudentClassPayload,
-  ): Promise<Student_Class> {
+  export async function deleteStudentClasses(
+    payload: DeleteStudentClassPayload[],
+  ): Promise<Student_Class[]> {
     const supabase = getSupabaseBrowserClient()
     const { data, error } = await supabase.functions.invoke("delete-student-class", {
       body: payload,
     })
     if (error) throw error
-    if (!data?.studentClass) {
-      throw new Error("delete-student-class returned no studentClass")
+    if (!data?.studentClasses || !Array.isArray(data.studentClasses)) {
+      throw new Error("delete-student-class returned no studentClasses")
     }
-    return mapStudentClassRow(data.studentClass as DbRow<Student_Class>)
+    return data.studentClasses.map((row: unknown) =>
+      mapStudentClassRow(row as DbRow<Student_Class>),
+    )
   }
+
+export async function getAllStudentClassesByClassId(
+  classId: string,
+): Promise<Student_Class[]> {
+  const supabase = getSupabaseBrowserClient()
+  const { data, error } = await supabase
+    .from("student_classes")
+    .select(`
+      student_id,
+      class_id,
+      is_active,
+      created_at,
+      updated_at
+    `)
+    .eq("class_id", classId)
+    .eq("is_active", true)
+
+  if (error) throw error
+  if (!data?.length) return []
+
+  return data.map((row) => mapStudentClassRow(row as DbRow<Student_Class>))
+}
