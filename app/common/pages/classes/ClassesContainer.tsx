@@ -3,7 +3,12 @@
 import React from "react"
 
 import type { Class } from "@/app/types/class"
-import { createClass, getAllClassesByInstituteId, updateClass } from "@/lib/api/class.api"
+import {
+  createClass,
+  getAllClassesByInstituteId,
+  getAllStudentClassesByClassIds,
+  updateClass,
+} from "@/lib/api/class.api"
 import { getAllSubjects, getClassRoomsByInstituteId, getInstituteByOwnerId } from "@/lib/api/institute-settings.api"
 import { getAllTeachersByInstituteId } from "@/lib/api/teachers.api"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
@@ -44,6 +49,7 @@ const ClassesContainer = () => {
   const [classRoomOptions, setClassRoomOptions] = React.useState<EntityOption[]>([])
   const [teacherOptions, setTeacherOptions] = React.useState<EntityOption[]>([])
   const [subjectOptions, setSubjectOptions] = React.useState<EntityOption[]>([])
+  const [studentCountByClassId, setStudentCountByClassId] = React.useState<Record<string, number>>({})
 
   React.useEffect(() => {
     let cancelled = false
@@ -63,6 +69,7 @@ const ClassesContainer = () => {
             setClassRoomOptions([])
             setTeacherOptions([])
             setSubjectOptions([])
+            setStudentCountByClassId({})
           }
           return
         }
@@ -75,11 +82,18 @@ const ClassesContainer = () => {
           getAllSubjects(),
         ])
 
+        const studentClasses = await getAllStudentClassesByClassIds(allClasses.map((item) => item.id))
+        const nextStudentCountByClassId = studentClasses.reduce<Record<string, number>>((accumulator, item) => {
+          accumulator[item.class_id] = (accumulator[item.class_id] ?? 0) + 1
+          return accumulator
+        }, {})
+
         if (!cancelled) {
           setClasses(allClasses)
           setClassRoomOptions(classRooms.map((room) => ({ id: room.id, name: room.name })))
           setTeacherOptions(teachers.map((teacher) => ({ id: teacher.id, name: teacher.name })))
           setSubjectOptions(subjects.map((subject) => ({ id: subject.id, name: subject.name })))
+          setStudentCountByClassId(nextStudentCountByClassId)
         }
       } catch (error) {
         console.error("Failed to load class form options", error)
@@ -89,6 +103,7 @@ const ClassesContainer = () => {
           setClassRoomOptions([])
           setTeacherOptions([])
           setSubjectOptions([])
+          setStudentCountByClassId({})
           toast.error("Could not load classes and class form options")
         }
       }
@@ -112,6 +127,7 @@ const ClassesContainer = () => {
           instituteId,
         })
         setClasses((previous) => [...previous, createdClass])
+        setStudentCountByClassId((previous) => ({ ...previous, [createdClass.id]: 0 }))
         toast.success("Class created successfully")
       } catch (error) {
         console.error("Failed to create class", error)
@@ -129,6 +145,10 @@ const ClassesContainer = () => {
       setClasses((previous) =>
         previous.map((item) => (item.id === payload.id ? updatedClass : item))
       )
+      setStudentCountByClassId((previous) => ({
+        ...previous,
+        [updatedClass.id]: previous[updatedClass.id] ?? 0,
+      }))
       toast.success("Class updated successfully")
     } catch (error) {
       console.error("Failed to update class", error)
@@ -144,6 +164,7 @@ const ClassesContainer = () => {
         classRoomOptions={classRoomOptions}
         teacherOptions={teacherOptions}
         subjectOptions={subjectOptions}
+        studentCountByClassId={studentCountByClassId}
         gradeOptions={gradeSelectOptions}
         onSubmitClass={handleSubmitClass}
       />

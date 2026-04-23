@@ -119,6 +119,7 @@ const StudentView = ({
   const [studentSubjectsOriginalIds, setStudentSubjectsOriginalIds] = React.useState<string[]>([])
   const [studentSubjectsSelectedIds, setStudentSubjectsSelectedIds] = React.useState<string[]>([])
   const [subjectPickerValue, setSubjectPickerValue] = React.useState("")
+  const [tableImageLoadErrors, setTableImageLoadErrors] = React.useState<Record<string, boolean>>({})
 
   const form = useForm<StudentFormInput, unknown, StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -130,6 +131,22 @@ const StudentView = ({
       is_active: "true",
     },
   })
+  const imageUrlValue = form.watch("image_url")
+  const [isImagePreviewError, setIsImagePreviewError] = React.useState(false)
+
+  const isImagePreviewUrlValid = React.useMemo(() => {
+    if (!imageUrlValue?.trim()) return false
+    try {
+      const parsedUrl = new URL(imageUrlValue)
+      return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:"
+    } catch {
+      return false
+    }
+  }, [imageUrlValue])
+
+  React.useEffect(() => {
+    setIsImagePreviewError(false)
+  }, [imageUrlValue, isDialogOpen])
 
   const activeStudents = React.useMemo(
     () => students.filter((student) => student.is_active),
@@ -288,6 +305,37 @@ const StudentView = ({
   }
 
   const columns: ColumnDef<Student>[] = [
+    {
+      id: "image",
+      header: "",
+      cell: ({ row }) => {
+        const student = row.original
+        const hasImageUrl = Boolean(student.image_url)
+        const hasLoadError = Boolean(tableImageLoadErrors[student.id])
+
+        if (!hasImageUrl || hasLoadError) {
+          return (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+              {student.name.slice(0, 1).toUpperCase()}
+            </div>
+          )
+        }
+
+        return (
+          <img
+            src={student.image_url}
+            alt={`${student.name} avatar`}
+            className="h-10 w-10 rounded-full border object-cover"
+            onError={() =>
+              setTableImageLoadErrors((previous) => ({
+                ...previous,
+                [student.id]: true,
+              }))
+            }
+          />
+        )
+      },
+    },
     {
       accessorKey: "name",
       header: "Name",
@@ -608,6 +656,24 @@ const StudentView = ({
                     <FormControl>
                       <Input placeholder="https://..." {...field} />
                     </FormControl>
+                    <div className="overflow-hidden rounded-md border bg-muted/20">
+                      {isImagePreviewUrlValid && !isImagePreviewError ? (
+                        <div className="flex justify-center p-2 sm:p-3">
+                          <img
+                            src={imageUrlValue}
+                            alt="Student preview"
+                            className="h-40 w-full max-w-56 rounded object-cover sm:h-48 sm:max-w-64"
+                            onError={() => setIsImagePreviewError(true)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-40 items-center justify-center px-4 text-center text-sm text-muted-foreground sm:h-48">
+                          {imageUrlValue?.trim()
+                            ? "Unable to preview this image URL."
+                            : "Image preview will appear here."}
+                        </div>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

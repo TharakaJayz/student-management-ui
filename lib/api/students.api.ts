@@ -308,3 +308,4 @@ export async function getAllStudentSubjectsBySubjectId(
   if (!data?.length) return []
   return data.map((row) => mapStudentSubjectRow(row as DbRow<Student_subject>))
 }
+

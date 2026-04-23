@@ -94,6 +94,7 @@ export interface ClassesViewProps {
   classRoomOptions: EntityOption[]
   teacherOptions: EntityOption[]
   subjectOptions: EntityOption[]
+  studentCountByClassId: Record<string, number>
   gradeOptions: readonly string[]
   onSubmitClass: (payload: ClassMutationPayload) => void | Promise<void>
 }
@@ -121,6 +122,7 @@ const ClassesView = ({
   classRoomOptions,
   teacherOptions,
   subjectOptions,
+  studentCountByClassId,
   gradeOptions,
   onSubmitClass,
 }: ClassesViewProps) => {
@@ -136,6 +138,7 @@ const ClassesView = ({
   const [studentsSearchValue, setStudentsSearchValue] = React.useState("")
   const [isConfigLoading, setIsConfigLoading] = React.useState(false)
   const [isConfigSaving, setIsConfigSaving] = React.useState(false)
+  const [configStudentImageErrors, setConfigStudentImageErrors] = React.useState<Record<string, boolean>>({})
 
   const classRoomNameById = React.useMemo(
     () => new Map(classRoomOptions.map((option) => [option.id, option.name])),
@@ -353,6 +356,11 @@ const ClassesView = ({
       cell: ({ row }) => `${formatHour(row.original.start_time)} - ${formatHour(row.original.end_time)}`,
     },
     {
+      id: "students",
+      header: "Students",
+      cell: ({ row }) => studentCountByClassId[row.original.id] ?? 0,
+    },
+    {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => (
@@ -506,6 +514,7 @@ const ClassesView = ({
             setSelectedStudentIds(new Set())
             setInitialStudentIds(new Set())
             setStudentsSearchValue("")
+            setConfigStudentImageErrors({})
           }
         }}
       >
@@ -536,6 +545,7 @@ const ClassesView = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-20">Select</TableHead>
+                    <TableHead className="w-20">Photo</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Grade</TableHead>
                   </TableRow>
@@ -543,7 +553,7 @@ const ClassesView = ({
                 <TableBody>
                   {isConfigLoading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="h-20 text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
                         Loading students...
                       </TableCell>
                     </TableRow>
@@ -559,13 +569,32 @@ const ClassesView = ({
                             disabled={isConfigSaving}
                           />
                         </TableCell>
+                        <TableCell>
+                          {student.image_url && !configStudentImageErrors[student.id] ? (
+                            <img
+                              src={student.image_url}
+                              alt={`${student.name} photo`}
+                              className="h-9 w-9 rounded-full border object-cover"
+                              onError={() =>
+                                setConfigStudentImageErrors((previous) => ({
+                                  ...previous,
+                                  [student.id]: true,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                              {student.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{student.name}</TableCell>
                         <TableCell>{student.grade}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={3} className="h-20 text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="h-20 text-center text-muted-foreground">
                         No students found for this class grade.
                       </TableCell>
                     </TableRow>

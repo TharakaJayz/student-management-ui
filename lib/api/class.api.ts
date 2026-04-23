@@ -229,3 +229,27 @@ export async function getAllStudentClassesByClassId(
 
   return data.map((row) => mapStudentClassRow(row as DbRow<Student_Class>))
 }
+
+export async function getAllStudentClassesByClassIds(
+  classIds: string[],
+): Promise<Student_Class[]> {
+  if (!classIds.length) return []
+
+  const supabase = getSupabaseBrowserClient()
+  const { data, error } = await supabase
+    .from("student_classes")
+    .select(`
+      student_id,
+      class_id,
+      is_active,
+      created_at,
+      updated_at
+    `)
+    .in("class_id", classIds)
+    .eq("is_active", true)
+
+  if (error) throw error
+  if (!data?.length) return []
+
+  return data.map((row) => mapStudentClassRow(row as DbRow<Student_Class>))
+}
