@@ -67,6 +67,7 @@ export type StudentMutationPayload =
 export interface StudentViewProps {
   students: Student[]
   subjects: SubjectOption[]
+  gradeSelectOptions: readonly string[]
   onSubmitStudent: (payload: StudentMutationPayload) => void | Promise<void>
   assignedStudentIds: string[]
   onAssignStudent: (student: Student) => void | Promise<void>
@@ -90,26 +91,10 @@ const getGradeNumber = (grade: string) => {
   return match ? Number(match[0]) : Number.NaN
 }
 
-const gradeSelectOptions = [
-  "Grade-01",
-  "Grade-02",
-  "Grade-03",
-  "Grade-04",
-  "Grade-05",
-  "Grade-06",
-  "Grade-07",
-  "Grade-08",
-  "Grade-09",
-  "Grade-10",
-  "Grade-11",
-  "Grade-12",
-  "Grade-13",
-  "Other",
-] as const
-
 const StudentView = ({
   students,
   subjects,
+  gradeSelectOptions,
   onSubmitStudent,
   assignedStudentIds,
   onAssignStudent,
@@ -435,7 +420,7 @@ const StudentView = ({
               <SelectTrigger className="w-full md:w-52">
                 <SelectValue placeholder="Filter by grade" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-52 overflow-y-auto">
                 <SelectItem value="all">All Grades</SelectItem>
                 {gradeOptions.map((grade) => (
                   <SelectItem key={grade} value={grade}>
@@ -599,7 +584,7 @@ const StudentView = ({
                           <SelectTrigger>
                             <SelectValue placeholder="Select grade" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-52 overflow-y-auto">
                             {gradeSelectOptions.map((grade) => (
                               <SelectItem key={grade} value={grade}>
                                 {grade}

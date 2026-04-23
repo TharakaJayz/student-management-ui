@@ -3,174 +3,138 @@
 import React from "react"
 
 import type { Class } from "@/app/types/class"
-import { Days } from "@/app/types/common"
+import { createClass, getAllClassesByInstituteId, updateClass } from "@/lib/api/class.api"
+import { getAllSubjects, getClassRoomsByInstituteId, getInstituteByOwnerId } from "@/lib/api/institute-settings.api"
+import { getAllTeachersByInstituteId } from "@/lib/api/teachers.api"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
+import { gradeSelectOptions } from "@/app/common/pages/students/StudentsContainer"
 
 import ClassesView, { type ClassFormValues, type ClassMutationPayload, type EntityOption } from "./ClassesView"
 
-const instituteId = "ins-demo-1"
-
-const classRoomOptions: EntityOption[] = [
-  { id: "room-1", name: "Main Hall" },
-  { id: "room-2", name: "Room A-201" },
-  { id: "room-3", name: "Room B-105" },
-  { id: "room-4", name: "Science Lab" },
-  { id: "room-5", name: "Computer Lab" },
-]
-
-const teacherOptions: EntityOption[] = [
-  { id: "tch-1", name: "Kasun Jayasuriya" },
-  { id: "tch-2", name: "Nadeesha Perera" },
-  { id: "tch-3", name: "Dineth Fernando" },
-  { id: "tch-4", name: "Iresha Silva" },
-  { id: "tch-5", name: "Ravindu Wickramasinghe" },
-]
-
-const subjectOptions: EntityOption[] = [
-  { id: "sub-1", name: "Mathematics" },
-  { id: "sub-2", name: "Science" },
-  { id: "sub-3", name: "English" },
-  { id: "sub-4", name: "History" },
-  { id: "sub-5", name: "ICT" },
-]
-
-const initialClasses: Class[] = [
-  {
-    id: "cls-1",
-    name: "Grade 8 Mathematics",
-    class_room_id: "room-1",
-    institute_id: instituteId,
-    teacher_id: "tch-1",
-    subject_id: "sub-1",
-    grade: "Grade 8",
-    start_time: 8,
-    end_time: 10,
-    frequency: "WEEKLY",
-    day: Days.MONDAY,
-    class_fee: 3500,
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "cls-2",
-    name: "Grade 9 Science",
-    class_room_id: "room-4",
-    institute_id: instituteId,
-    teacher_id: "tch-2",
-    subject_id: "sub-2",
-    grade: "Grade 9",
-    start_time: 10,
-    end_time: 12,
-    frequency: "WEEKLY",
-    day: Days.MONDAY,
-    class_fee: 4000,
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "cls-3",
-    name: "Grade 10 English",
-    class_room_id: "room-2",
-    institute_id: instituteId,
-    teacher_id: "tch-3",
-    subject_id: "sub-3",
-    grade: "Grade 10",
-    start_time: 13,
-    end_time: 15,
-    frequency: "WEEKLY",
-    day: Days.TUESDAY,
-    class_fee: 3200,
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "cls-4",
-    name: "Grade 11 History",
-    class_room_id: "room-3",
-    institute_id: instituteId,
-    teacher_id: "tch-4",
-    subject_id: "sub-4",
-    grade: "Grade 11",
-    start_time: 15,
-    end_time: 17,
-    frequency: "WEEKLY",
-    day: Days.WEDNESDAY,
-    class_fee: 3000,
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-  {
-    id: "cls-5",
-    name: "Grade 9 ICT",
-    class_room_id: "room-5",
-    institute_id: instituteId,
-    teacher_id: "tch-5",
-    subject_id: "sub-5",
-    grade: "Grade 9",
-    start_time: 9,
-    end_time: 11,
-    frequency: "OTHER",
-    day: Days.THURSDAY,
-    class_fee: 4500,
-    is_active: true,
-    created_at: new Date(),
-    updated_at: new Date(),
-  },
-]
-
 const parseFormToClass = (
   payload: ClassFormValues
-): Omit<Class, "id" | "created_at" | "updated_at" | "institute_id"> => ({
+): {
+  name: string
+  classRoomId: string
+  teacherId: string
+  subjectId: string
+  grade: string
+  startTime: number
+  endTime: number
+  frequency: "WEEKLY" | "OTHER"
+  day: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY"
+  classFee: number
+} => ({
   name: payload.name,
-  class_room_id: payload.class_room_id,
-  teacher_id: payload.teacher_id,
-  subject_id: payload.subject_id,
+  classRoomId: payload.class_room_id,
+  teacherId: payload.teacher_id,
+  subjectId: payload.subject_id,
   grade: payload.grade,
-  start_time: payload.start_time,
-  end_time: payload.end_time,
+  startTime: payload.start_time,
+  endTime: payload.end_time,
   frequency: payload.frequency,
   day: payload.day,
-  class_fee: payload.class_fee,
-  is_active: payload.is_active === "true",
+  classFee: payload.class_fee,
 })
 
 const ClassesContainer = () => {
-  const [classes, setClasses] = React.useState<Class[]>(initialClasses)
+  const [classes, setClasses] = React.useState<Class[]>([])
+  const [instituteId, setInstituteId] = React.useState<string | null>(null)
+  const [classRoomOptions, setClassRoomOptions] = React.useState<EntityOption[]>([])
+  const [teacherOptions, setTeacherOptions] = React.useState<EntityOption[]>([])
+  const [subjectOptions, setSubjectOptions] = React.useState<EntityOption[]>([])
 
-  const handleSubmitClass = (payload: ClassMutationPayload) => {
-    if (payload.mode === "create") {
-      const parsedClass = parseFormToClass(payload.data)
-      const now = new Date()
+  React.useEffect(() => {
+    let cancelled = false
 
-      setClasses((previous) => [
-        ...previous,
-        {
-          id: `cls-${crypto.randomUUID()}`,
-          institute_id: instituteId,
-          ...parsedClass,
-          created_at: now,
-          updated_at: now,
-        },
-      ])
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await getSupabaseBrowserClient().auth.getUser()
+        if (!user || cancelled) return
+
+        const institute = await getInstituteByOwnerId(user.id)
+        if (!institute || cancelled) {
+          if (!cancelled) {
+            setInstituteId(null)
+            setClasses([])
+            setClassRoomOptions([])
+            setTeacherOptions([])
+            setSubjectOptions([])
+          }
+          return
+        }
+
+        setInstituteId(institute.id)
+        const [allClasses, classRooms, teachers, subjects] = await Promise.all([
+          getAllClassesByInstituteId(institute.id),
+          getClassRoomsByInstituteId(institute.id),
+          getAllTeachersByInstituteId(institute.id),
+          getAllSubjects(),
+        ])
+
+        if (!cancelled) {
+          setClasses(allClasses)
+          setClassRoomOptions(classRooms.map((room) => ({ id: room.id, name: room.name })))
+          setTeacherOptions(teachers.map((teacher) => ({ id: teacher.id, name: teacher.name })))
+          setSubjectOptions(subjects.map((subject) => ({ id: subject.id, name: subject.name })))
+        }
+      } catch (error) {
+        console.error("Failed to load class form options", error)
+        if (!cancelled) {
+          setInstituteId(null)
+          setClasses([])
+          setClassRoomOptions([])
+          setTeacherOptions([])
+          setSubjectOptions([])
+          toast.error("Could not load classes and class form options")
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleSubmitClass = async (payload: ClassMutationPayload) => {
+    if (!instituteId) {
+      toast.error("Institute is required to manage classes")
       return
     }
 
-    setClasses((previous) =>
-      previous.map((item) => {
-        if (item.id !== payload.id) {
-          return item
-        }
-
-        return {
-          ...item,
+    if (payload.mode === "create") {
+      try {
+        const createdClass = await createClass({
           ...parseFormToClass(payload.data),
-          updated_at: new Date(),
-        }
+          instituteId,
+        })
+        setClasses((previous) => [...previous, createdClass])
+        toast.success("Class created successfully")
+      } catch (error) {
+        console.error("Failed to create class", error)
+        toast.error("Could not create class")
+        throw error
+      }
+      return
+    }
+
+    try {
+      const updatedClass = await updateClass({
+        classId: payload.id,
+        ...parseFormToClass(payload.data),
       })
-    )
+      setClasses((previous) =>
+        previous.map((item) => (item.id === payload.id ? updatedClass : item))
+      )
+      toast.success("Class updated successfully")
+    } catch (error) {
+      console.error("Failed to update class", error)
+      toast.error("Could not update class")
+      throw error
+    }
   }
 
   return (
@@ -180,6 +144,7 @@ const ClassesContainer = () => {
         classRoomOptions={classRoomOptions}
         teacherOptions={teacherOptions}
         subjectOptions={subjectOptions}
+        gradeOptions={gradeSelectOptions}
         onSubmitClass={handleSubmitClass}
       />
     </div>

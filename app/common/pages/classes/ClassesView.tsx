@@ -86,7 +86,8 @@ export interface ClassesViewProps {
   classRoomOptions: EntityOption[]
   teacherOptions: EntityOption[]
   subjectOptions: EntityOption[]
-  onSubmitClass: (payload: ClassMutationPayload) => void
+  gradeOptions: readonly string[]
+  onSubmitClass: (payload: ClassMutationPayload) => void | Promise<void>
 }
 
 const dayOrder: Days[] = [
@@ -112,10 +113,12 @@ const ClassesView = ({
   classRoomOptions,
   teacherOptions,
   subjectOptions,
+  gradeOptions,
   onSubmitClass,
 }: ClassesViewProps) => {
   const [searchValue, setSearchValue] = React.useState("")
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [isClassSaving, setIsClassSaving] = React.useState(false)
   const [editingClass, setEditingClass] = React.useState<Class | null>(null)
 
   const classRoomNameById = React.useMemo(
@@ -213,16 +216,21 @@ const ClassesView = ({
     [form]
   )
 
-  const onSubmit = (data: ClassFormValues) => {
-    if (editingClass) {
-      onSubmitClass({ mode: "update", id: editingClass.id, data })
-    } else {
-      onSubmitClass({ mode: "create", data })
-    }
+  const onSubmit = async (data: ClassFormValues) => {
+    setIsClassSaving(true)
+    try {
+      if (editingClass) {
+        await onSubmitClass({ mode: "update", id: editingClass.id, data })
+      } else {
+        await onSubmitClass({ mode: "create", data })
+      }
 
-    setEditingClass(null)
-    setIsDialogOpen(false)
-    form.reset()
+      setEditingClass(null)
+      setIsDialogOpen(false)
+      form.reset()
+    } finally {
+      setIsClassSaving(false)
+    }
   }
 
   const columns: ColumnDef<Class>[] = [
@@ -394,6 +402,7 @@ const ClassesView = ({
       <Dialog
         open={isDialogOpen}
         onOpenChange={(open) => {
+          if (!open && isClassSaving) return
           setIsDialogOpen(open)
           if (!open) {
             setEditingClass(null)
@@ -435,7 +444,18 @@ const ClassesView = ({
                     <FormItem>
                       <FormLabel>Grade</FormLabel>
                       <FormControl>
-                        <Input placeholder="Grade 8" {...field} />
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select grade" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-52 overflow-y-auto">
+                            {gradeOptions.map((grade) => (
+                              <SelectItem key={grade} value={grade}>
+                                {grade}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -498,7 +518,7 @@ const ClassesView = ({
                           <SelectTrigger>
                             <SelectValue placeholder="Select teacher" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent position="popper" side="bottom" align="start">
                             {teacherOptions.map((option) => (
                               <SelectItem key={option.id} value={option.id}>
                                 {option.name}
@@ -650,10 +670,23 @@ const ClassesView = ({
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={isClassSaving}
+                >
                   Cancel
                 </Button>
-                <Button type="submit">{editingClass ? "Update Class" : "Create Class"}</Button>
+                <Button type="submit" disabled={isClassSaving}>
+                  {editingClass
+                    ? isClassSaving
+                      ? "Updating..."
+                      : "Update Class"
+                    : isClassSaving
+                      ? "Creating..."
+                      : "Create Class"}
+                </Button>
               </DialogFooter>
             </form>
           </Form>

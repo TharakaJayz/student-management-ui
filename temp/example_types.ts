@@ -67,13 +67,13 @@ interface Teacher_Subject {
 //   classFee: number;
 // }
 
-interface Student_Class {
-  studentId: string; //fk
-  classId: string; //fk
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// interface Student_Class {
+//   studentId: string; //fk
+//   classId: string; //fk
+//   isActive: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }
 
 // interface Student_subject {
 //   studentId: string; //fk

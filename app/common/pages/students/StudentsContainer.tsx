@@ -23,6 +23,23 @@ import StudentView, {
   type StudentMutationPayload,
 } from "./StudentView"
 
+export const gradeSelectOptions = [
+  "Grade-01",
+  "Grade-02",
+  "Grade-03",
+  "Grade-04",
+  "Grade-05",
+  "Grade-06",
+  "Grade-07",
+  "Grade-08",
+  "Grade-09",
+  "Grade-10",
+  "Grade-11",
+  "Grade-12",
+  "Grade-13",
+  "Other",
+] as const
+
 const StudentsContainer = () => {
   const [students, setStudents] = React.useState<Student[]>([])
   const [subjects, setSubjects] = React.useState<SubjectOption[]>([])
@@ -219,6 +236,7 @@ const StudentsContainer = () => {
       <StudentView
         students={students}
         subjects={subjects}
+        gradeSelectOptions={gradeSelectOptions}
         onSubmitStudent={handleSubmitStudent}
         assignedStudentIds={assignedStudentIds}
         onAssignStudent={handleAssignStudent}

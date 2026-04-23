@@ -71,6 +71,29 @@ export async function getAllStudents(): Promise<Student[]> {
   return data.map((row) => mapStudentRow(row as DbRow<Student>))
 }
 
+export async function getAllStudentsByGrade(grade: string): Promise<Student[]> {
+  const supabase = getSupabaseBrowserClient()
+  const { data, error } = await supabase
+    .from("students")
+    .select(`
+      id,
+      name,
+      age,
+      image_url,
+      grade,
+      is_active,
+      created_at,
+      updated_at
+    `)
+    .eq("is_active", true)
+    .eq("grade", grade)
+
+  if (error) throw error
+  if (!data?.length) return []
+
+  return data.map((row) => mapStudentRow(row as DbRow<Student>))
+}
+
 export type CreateStudentPayload = {
   name: string
   age: number

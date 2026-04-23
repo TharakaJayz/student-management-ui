@@ -13,3 +13,11 @@ export interface Class extends BaseDomain {
     day: Days;
     class_fee: number;
   }
+
+  export interface Student_Class {
+    student_id: string; 
+    class_id: string; 
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+  }
