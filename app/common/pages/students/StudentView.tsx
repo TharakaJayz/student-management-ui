@@ -66,11 +66,23 @@ export type StudentMutationPayload =
 
 export interface StudentViewProps {
   students: Student[]
+  subjects: SubjectOption[]
   onSubmitStudent: (payload: StudentMutationPayload) => void | Promise<void>
   assignedStudentIds: string[]
   onAssignStudent: (student: Student) => void | Promise<void>
   onUnassignStudent: (student: Student) => void | Promise<void>
   assignmentPendingStudentId?: string | null
+  onOpenStudentSubjects: (student: Student) => Promise<string[]>
+  onSaveStudentSubjects: (
+    student: Student,
+    nextSubjectIds: string[],
+    previousSubjectIds: string[]
+  ) => Promise<void>
+}
+
+export interface SubjectOption {
+  id: string
+  name: string
 }
 
 const getGradeNumber = (grade: string) => {
@@ -78,13 +90,33 @@ const getGradeNumber = (grade: string) => {
   return match ? Number(match[0]) : Number.NaN
 }
 
+const gradeSelectOptions = [
+  "Grade-01",
+  "Grade-02",
+  "Grade-03",
+  "Grade-04",
+  "Grade-05",
+  "Grade-06",
+  "Grade-07",
+  "Grade-08",
+  "Grade-09",
+  "Grade-10",
+  "Grade-11",
+  "Grade-12",
+  "Grade-13",
+  "Other",
+] as const
+
 const StudentView = ({
   students,
+  subjects,
   onSubmitStudent,
   assignedStudentIds,
   onAssignStudent,
   onUnassignStudent,
   assignmentPendingStudentId = null,
+  onOpenStudentSubjects,
+  onSaveStudentSubjects,
 }: StudentViewProps) => {
   const [searchValue, setSearchValue] = React.useState("")
   const [gradeFilter, setGradeFilter] = React.useState("all")
@@ -96,6 +128,12 @@ const StudentView = ({
   const [editingStudent, setEditingStudent] = React.useState<Student | null>(null)
   const [assignTarget, setAssignTarget] = React.useState<Student | null>(null)
   const [unassignTarget, setUnassignTarget] = React.useState<Student | null>(null)
+  const [subjectsTarget, setSubjectsTarget] = React.useState<Student | null>(null)
+  const [isStudentSubjectsLoading, setIsStudentSubjectsLoading] = React.useState(false)
+  const [isStudentSubjectsSaving, setIsStudentSubjectsSaving] = React.useState(false)
+  const [studentSubjectsOriginalIds, setStudentSubjectsOriginalIds] = React.useState<string[]>([])
+  const [studentSubjectsSelectedIds, setStudentSubjectsSelectedIds] = React.useState<string[]>([])
+  const [subjectPickerValue, setSubjectPickerValue] = React.useState("")
 
   const form = useForm<StudentFormInput, unknown, StudentFormValues>({
     resolver: zodResolver(studentFormSchema),
@@ -115,6 +153,10 @@ const StudentView = ({
   const assignedStudentIdSet = React.useMemo(
     () => new Set(assignedStudentIds),
     [assignedStudentIds]
+  )
+  const subjectNameById = React.useMemo(
+    () => new Map(subjects.map((subject) => [subject.id, subject.name])),
+    [subjects]
   )
 
   const gradeSummary = React.useMemo(() => {
@@ -217,6 +259,49 @@ const StudentView = ({
     setUnassignTarget(null)
   }
 
+  const openManageSubjectsDialog = async (student: Student) => {
+    setSubjectsTarget(student)
+    setSubjectPickerValue("")
+    setIsStudentSubjectsLoading(true)
+    try {
+      const existingSubjectIds = await onOpenStudentSubjects(student)
+      setStudentSubjectsOriginalIds(existingSubjectIds)
+      setStudentSubjectsSelectedIds(existingSubjectIds)
+    } finally {
+      setIsStudentSubjectsLoading(false)
+    }
+  }
+
+  const handleAddSubjectToSelection = () => {
+    if (!subjectPickerValue) return
+    setStudentSubjectsSelectedIds((previous) =>
+      previous.includes(subjectPickerValue) ? previous : [...previous, subjectPickerValue]
+    )
+    setSubjectPickerValue("")
+  }
+
+  const handleRemoveSubjectFromSelection = (subjectId: string) => {
+    setStudentSubjectsSelectedIds((previous) => previous.filter((id) => id !== subjectId))
+  }
+
+  const handleSaveStudentSubjects = async () => {
+    if (!subjectsTarget) return
+    setIsStudentSubjectsSaving(true)
+    try {
+      await onSaveStudentSubjects(
+        subjectsTarget,
+        studentSubjectsSelectedIds,
+        studentSubjectsOriginalIds
+      )
+      setSubjectsTarget(null)
+      setStudentSubjectsOriginalIds([])
+      setStudentSubjectsSelectedIds([])
+      setSubjectPickerValue("")
+    } finally {
+      setIsStudentSubjectsSaving(false)
+    }
+  }
+
   const columns: ColumnDef<Student>[] = [
     {
       accessorKey: "name",
@@ -260,6 +345,14 @@ const StudentView = ({
               onClick={() => (isAssigned ? setUnassignTarget(student) : setAssignTarget(student))}
             >
               {isPending ? "Saving..." : isAssigned ? "Unassign" : "Assign"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => void openManageSubjectsDialog(student)}
+            >
+              Subjects
             </Button>
           </div>
         )
@@ -502,7 +595,18 @@ const StudentView = ({
                     <FormItem>
                       <FormLabel>Grade</FormLabel>
                       <FormControl>
-                        <Input placeholder="Grade 5" {...field} />
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select grade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {gradeSelectOptions.map((grade) => (
+                              <SelectItem key={grade} value={grade}>
+                                {grade}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -643,6 +747,117 @@ const StudentView = ({
               {assignmentPendingStudentId === unassignTarget?.id
                 ? "Unassigning..."
                 : "Confirm Unassign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(subjectsTarget)}
+        onOpenChange={(open) => {
+          if (!open && isStudentSubjectsSaving) return
+          if (!open) {
+            setSubjectsTarget(null)
+            setStudentSubjectsOriginalIds([])
+            setStudentSubjectsSelectedIds([])
+            setSubjectPickerValue("")
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manage student subjects</DialogTitle>
+            <DialogDescription>
+              Add or remove subjects for this student.
+            </DialogDescription>
+          </DialogHeader>
+
+          {subjectsTarget ? (
+            <div className="space-y-4">
+              <div className="space-y-1 text-sm">
+                <p>
+                  <span className="text-muted-foreground">Student:</span> {subjectsTarget.name}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Grade:</span> {subjectsTarget.grade}
+                </p>
+              </div>
+
+              {isStudentSubjectsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading assigned subjects...</p>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Select value={subjectPickerValue} onValueChange={setSubjectPickerValue}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select subject to add" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.id}>
+                            {subject.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="sm:w-auto"
+                      disabled={!subjectPickerValue}
+                      onClick={handleAddSubjectToSelection}
+                    >
+                      Add Subject
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Selected subjects
+                    </p>
+                    {studentSubjectsSelectedIds.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {studentSubjectsSelectedIds.map((subjectId) => (
+                          <div
+                            key={subjectId}
+                            className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-sm"
+                          >
+                            <span>{subjectNameById.get(subjectId) ?? "Unknown Subject"}</span>
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground"
+                              onClick={() => handleRemoveSubjectFromSelection(subjectId)}
+                              aria-label="Remove selected subject"
+                            >
+                              x
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No subjects selected.</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isStudentSubjectsSaving}
+              onClick={() => setSubjectsTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isStudentSubjectsLoading || isStudentSubjectsSaving}
+              onClick={() => void handleSaveStudentSubjects()}
+            >
+              {isStudentSubjectsSaving ? "Saving..." : "Save Subjects"}
             </Button>
           </DialogFooter>
         </DialogContent>

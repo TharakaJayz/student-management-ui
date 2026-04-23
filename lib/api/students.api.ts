@@ -218,36 +218,35 @@ function mapStudentSubjectRow(row: DbRow<Student_subject>): Student_subject {
  * body: { studentId, subjectId, isActive? }
  * returns: { studentSubject }
  */
-export async function createStudentSubject(
-  payload: CreateStudentSubjectPayload,
-): Promise<Student_subject> {
+export async function createStudentSubjects(
+  payload: CreateStudentSubjectPayload[],
+): Promise<Student_subject[]> {
   const supabase = getSupabaseBrowserClient()
   const { data, error } = await supabase.functions.invoke("create-student-subject", {
     body: payload,
   })
   if (error) throw error
-  if (!data?.studentSubject) {
-    throw new Error("create-student-subject returned no studentSubject")
+  if (!data?.studentSubjects || !Array.isArray(data.studentSubjects)) {
+    throw new Error("create-student-subject returned no studentSubjects")
   }
-  return mapStudentSubjectRow(data.studentSubject as DbRow<Student_subject>)
+  return data.studentSubjects.map((row: unknown) =>
+    mapStudentSubjectRow(row as DbRow<Student_subject>),
+  )
 }
-/**
- * delete-student-subject
- * body: { studentId, subjectId }
- * returns: { studentSubject }
- */
-export async function deleteStudentSubject(
-  payload: DeleteStudentSubjectPayload,
-): Promise<Student_subject> {
+export async function deleteStudentSubjects(
+  payload: DeleteStudentSubjectPayload[],
+): Promise<Student_subject[]> {
   const supabase = getSupabaseBrowserClient()
   const { data, error } = await supabase.functions.invoke("delete-student-subject", {
     body: payload,
   })
   if (error) throw error
-  if (!data?.studentSubject) {
-    throw new Error("delete-student-subject returned no studentSubject")
+  if (!data?.studentSubjects || !Array.isArray(data.studentSubjects)) {
+    throw new Error("delete-student-subject returned no studentSubjects")
   }
-  return mapStudentSubjectRow(data.studentSubject as DbRow<Student_subject>)
+  return data.studentSubjects.map((row: unknown) =>
+    mapStudentSubjectRow(row as DbRow<Student_subject>),
+  )
 }
 
 export async function getAllStudentSubjectsByStudentId(

@@ -75,13 +75,13 @@ interface Student_Class {
   updatedAt: Date;
 }
 
-interface Student_subject {
-  studentId: string; //fk
-  subjectId: string; //fk
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// interface Student_subject {
+//   studentId: string; //fk
+//   subjectId: string; //fk
+//   isActive: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }
 
 interface Student_class_attendances {
   studentId: string;

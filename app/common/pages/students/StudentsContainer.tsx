@@ -3,22 +3,29 @@
 import React from "react"
 
 import type { Student } from "@/app/types/students"
-import { getInstituteByOwnerId } from "@/lib/api/institute-settings.api"
-import { createStudent, getAllStudents, updateStudent } from "@/lib/api/students.api"
+import { getAllSubjects, getInstituteByOwnerId } from "@/lib/api/institute-settings.api"
 import {
+  createStudent,
   createStudentInstituteEnrollment,
+  createStudentSubjects,
   deleteStudentInstituteEnrollment,
+  deleteStudentSubjects,
+  getAllStudentSubjectsByStudentId,
+  getAllStudents,
   getAllStudentInstituteEnrollmentsByInstituteId,
+  updateStudent,
 } from "@/lib/api/students.api"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 
 import StudentView, {
+  type SubjectOption,
   type StudentMutationPayload,
 } from "./StudentView"
 
 const StudentsContainer = () => {
   const [students, setStudents] = React.useState<Student[]>([])
+  const [subjects, setSubjects] = React.useState<SubjectOption[]>([])
   const [instituteId, setInstituteId] = React.useState<string | null>(null)
   const [assignedStudentIds, setAssignedStudentIds] = React.useState<string[]>([])
   const [assignmentPendingStudentId, setAssignmentPendingStudentId] = React.useState<
@@ -30,14 +37,19 @@ const StudentsContainer = () => {
 
     void (async () => {
       try {
-        const allStudents = await getAllStudents()
+        const [allStudents, allSubjects] = await Promise.all([
+          getAllStudents(),
+          getAllSubjects(),
+        ])
         if (!cancelled) {
           setStudents(allStudents)
+          setSubjects(allSubjects.map((subject) => ({ id: subject.id, name: subject.name })))
         }
       } catch (error) {
         console.error("Failed to load students", error)
         if (!cancelled) {
           setStudents([])
+          setSubjects([])
         }
       }
     })()
@@ -159,15 +171,61 @@ const StudentsContainer = () => {
     }
   }
 
+  const handleOpenStudentSubjects = async (student: Student): Promise<string[]> => {
+    const studentSubjects = await getAllStudentSubjectsByStudentId(student.id)
+    return studentSubjects
+      .filter((studentSubject) => studentSubject.is_active)
+      .map((studentSubject) => studentSubject.subject_id)
+  }
+
+  const handleSaveStudentSubjects = async (
+    student: Student,
+    nextSubjectIds: string[],
+    previousSubjectIds: string[]
+  ) => {
+    const nextSet = new Set(nextSubjectIds)
+    const previousSet = new Set(previousSubjectIds)
+
+    const toCreate = nextSubjectIds
+      .filter((subjectId) => !previousSet.has(subjectId))
+      .map((subjectId) => ({
+        studentId: student.id,
+        subjectId,
+      }))
+
+    const toDelete = previousSubjectIds
+      .filter((subjectId) => !nextSet.has(subjectId))
+      .map((subjectId) => ({
+        studentId: student.id,
+        subjectId,
+      }))
+
+    if (!toCreate.length && !toDelete.length) {
+      return
+    }
+
+    if (toCreate.length) {
+      await createStudentSubjects(toCreate)
+    }
+    if (toDelete.length) {
+      await deleteStudentSubjects(toDelete)
+    }
+
+    toast.success("Student subjects updated successfully")
+  }
+
   return (
     <div>
       <StudentView
         students={students}
+        subjects={subjects}
         onSubmitStudent={handleSubmitStudent}
         assignedStudentIds={assignedStudentIds}
         onAssignStudent={handleAssignStudent}
         onUnassignStudent={handleUnassignStudent}
         assignmentPendingStudentId={assignmentPendingStudentId}
+        onOpenStudentSubjects={handleOpenStudentSubjects}
+        onSaveStudentSubjects={handleSaveStudentSubjects}
       />
     </div>
   )
