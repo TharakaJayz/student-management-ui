@@ -83,42 +83,42 @@ interface Teacher_Subject {
 //   updatedAt: Date;
 // }
 
-interface Student_class_attendances {
-  studentId: string;
-  classId: string;
-  attendanceDate: number;
-  isPresent: boolean;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// interface Student_class_attendances {
+//   studentId: string;
+//   classId: string;
+//   attendanceDate: number;
+//   isPresent: boolean;
+//   isActive: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }
 
-interface Student_class_monthly_payments {
-  billingMonth: string; 
-  studentId: string;
-  grade: string;
-  classId: string;
-  instituteId: string;
-  amountDue: number;
-  paymentAmount: number;
-  paymentStatus: "PENDING" | "PAID" | "FAILED";
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// interface Student_class_monthly_payments {
+//   billingMonth: string; 
+//   studentId: string;
+//   grade: string;
+//   classId: string;
+//   instituteId: string;
+//   amountDue: number;
+//   paymentAmount: number;
+//   paymentStatus: "PENDING" | "PAID" | "FAILED";
+//   isActive: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }
 
-interface Teacher_class_monthly_payments {
-    instituteId: string;
-    teacherId: string;
-    classId: string;
-    billingMonth: string;
-    amountDue: number;
-    paymentAmount: number;
-    paymentStatus: "PENDING" | "PAID" | "FAILED";
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-}
+// interface Teacher_class_monthly_payments {
+//     instituteId: string;
+//     teacherId: string;
+//     classId: string;
+//     billingMonth: string;
+//     amountDue: number;
+//     paymentAmount: number;
+//     paymentStatus: "PENDING" | "PAID" | "FAILED";
+//     isActive: boolean;
+//     createdAt: Date;
+//     updatedAt: Date;
+// }
 
 // interface Student_institute_enrollments {
 //   studentId: string;

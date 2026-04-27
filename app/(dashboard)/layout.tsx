@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BookOpen, GraduationCap, Home, Settings, Users } from "lucide-react"
+import { BookOpen, Calendar, GraduationCap, Home, Settings, Users } from "lucide-react"
 import LeftSidebar from "@/app/common/layout/LeftSidebar"
 import MobileSidebar from "@/app/common/layout/MobileSidebar"
 import TopBar from "@/app/common/layout/TopBar"
 
 const primaryNav = [
   { title: "Dashboard", icon: Home, href: "/dashboard" },
+  { title: "Attendance", icon: Calendar, href: "/attendance" },
   { title: "Students", icon: GraduationCap, href: "/students" },
   { title: "Classes", icon: BookOpen, href: "/classes" },
   { title: "Teachers", icon: Users, href: "/teachers" },
